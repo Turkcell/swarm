@@ -1,0 +1,13 @@
+project/project
+project/target
+target
+.history
+.cache
+.idea
+*.iml
+.idea_modules
+.classpath
+.project
+/server/RUNNING_PID
+.settings
+bin
