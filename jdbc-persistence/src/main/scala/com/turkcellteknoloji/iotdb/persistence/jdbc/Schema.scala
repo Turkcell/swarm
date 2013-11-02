@@ -39,6 +39,7 @@ trait MetadataComponent {
     } yield d.name
   }
 
+
   // Definition of the databases table
   object Series extends Table[(String, String, String, Option[String], Boolean)]("SERIES") {
     def id = column[String]("SERIES_ID", O.PrimaryKey)

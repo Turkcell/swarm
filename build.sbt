@@ -2,14 +2,18 @@ organization := "com.turkcellteknoloji.iotdb"
 
 version := "1.0-SNAPSHOT"
 
-scalaVersion := "2.10.3"
+scalaVersion in ThisBuild := "2.10.3"
 
 scalacOptions += "-optimize"
 
-lazy val domain = project
+lazy val core = project
 
-lazy val server = project.dependsOn(domain,cassandrapersistence).settings( webSettings :_*)
+lazy val service = project.dependsOn(core)
 
-lazy val cassandrapersistence = project.dependsOn(domain).in(file("cassandra-persistence"))
+lazy val rest = project.dependsOn(core,service,cassandrapersistence).settings( webSettings :_*)
 
-lazy val jdbcpersistence = project.dependsOn(domain).in(file("jdbc-persistence"))
+lazy val cassandrapersistence = project.dependsOn(core).in(file("cassandra-persistence"))
+
+lazy val jdbcpersistence = project.dependsOn(core).in(file("jdbc-persistence"))
+
+libraryDependencies in ThisBuild ++= Seq("com.github.nscala-time" %% "nscala-time" % "0.6.0")
