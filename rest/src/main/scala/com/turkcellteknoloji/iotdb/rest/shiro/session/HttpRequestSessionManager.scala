@@ -1,4 +1,4 @@
-package com.turkcellteknoloji.iotdb.server.shiro.session
+package com.turkcellteknoloji.iotdb.rest.shiro.session
 
 import org.apache.shiro.session.mgt.{SessionContext, SessionKey, SessionManager}
 import org.apache.shiro.session.Session

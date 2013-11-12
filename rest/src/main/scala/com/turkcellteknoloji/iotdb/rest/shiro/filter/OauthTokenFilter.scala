@@ -1,4 +1,4 @@
-package com.turkcellteknoloji.iotdb.server.shiro.filter
+package com.turkcellteknoloji.iotdb.rest.shiro.filter
 
 import javax.servlet.http.HttpServletRequest
 import org.apache.oltu.oauth2.rs.request.OAuthAccessResourceRequest
