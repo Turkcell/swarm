@@ -1,5 +1,10 @@
 package com.turkcellteknoloji.iotdb.security
+
 import com.turkcellteknoloji.iotdb.domain._
+import java.nio.ByteBuffer
+import com.turkcellteknoloji.iotdb.{UUIDGenerator, Config}
+
+
 /**
  * Created by capacman on 10/31/13.
  */
@@ -41,16 +46,26 @@ object AuthPrincipalType extends Enumeration {
       case Device => AuthPrincipalTypeValue.deviceBase64
       case DatabaseUser => AuthPrincipalTypeValue.databaseUserBase64
     }
+
+    def generateOauthSecretKey = {
+      val timeStamp = System.currentTimeMillis()
+      val bb = ByteBuffer.allocate(20)
+      bb.put((timeStamp + Config.clientTokenSecretSalt + UUIDGenerator.secretGenerator.generate()).sha)
+      this.base64Prefix + bb.base64URLSafeString
+    }
   }
 
   implicit def value2AuthPrincipalTypeValue(ap: Value) = new AuthPrincipalTypeValue(ap)
 
   object AuthPrincipalTypeValue {
-    val orgBase64 = Organization.prefix.base64
-    val adminBase64 = Admin.prefix.base64
-    val databaseBase64 = Database.prefix.base64
-    val deviceBase64 = Device.prefix.base64
-    val databaseUserBase64 = DatabaseUser.prefix.base64
+    val orgBase64 = (":" + Organization.prefix).base64
+    val adminBase64 = (":" + Admin.prefix).base64
+    val databaseBase64 = (":" + Database.prefix).base64
+    val deviceBase64 = (":" + Device.prefix).base64
+    val databaseUserBase64 = (":" + DatabaseUser.prefix).base64
+
+    val prefixLength = 2
+    val base64prefixLength = 4
   }
 
 }

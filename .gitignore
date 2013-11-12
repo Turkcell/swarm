@@ -10,4 +10,5 @@ target
 .project
 /server/RUNNING_PID
 .settings
+.directory
 bin

@@ -39,3 +39,9 @@ case class Database(val id: UUID, val name: String, val owner: Organization)
 
 case class Device(val id: UUID, val deviceID: String)
 
+
+trait MetadataRepository {
+  def createOrganization(name: String, users: Set[AdminUser]): Organization
+  def updateOrganization(org:Organization)
+}
+

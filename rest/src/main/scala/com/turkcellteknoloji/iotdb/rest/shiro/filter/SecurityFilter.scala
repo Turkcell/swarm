@@ -6,9 +6,10 @@ import org.apache.oltu.oauth2.common.message.types.TokenType
 import com.turkcellteknoloji.iotdb.security.tokens.TokenService
 import com.turkcellteknoloji.iotdb.security.AuthPrincipalType._
 import com.turkcellteknoloji.iotdb.management.ManagementService
-import com.turkcellteknoloji.iotdb.security.shiro.PrincipalCredentialsToken
+import com.turkcellteknoloji.iotdb.security.shiro.{PrincipalCredentialsToken}
 import scala.util.Try
 import org.apache.shiro.SecurityUtils
+import com.turkcellteknoloji.iotdb.security.OauthBearerToken
 
 
 /**
@@ -22,22 +23,15 @@ trait OauthTokenFilter {
   protected def oauth()(implicit request: HttpServletRequest) {
     val acc_token = {
       if (request.getParameter("access_token") != null)
-        Some(request.getParameter("access_token"))
+        Some(new OauthBearerToken(request.getParameter("access_token")))
       else {
         val rr = new OAuthAccessResourceRequest(request, TokenType.BEARER)
-        if (rr.getAccessToken == null) None else Some(rr.getAccessToken)
+        if (rr.getAccessToken == null) None else Some(new OauthBearerToken(rr.getAccessToken))
       }
     }
     acc_token.map {
       token =>
-        val tokenInfo = tokenService.getTokenInfo(token)
-        val pct = tokenInfo.principal.`type` match {
-          case Admin | DatabaseUser => PrincipalCredentialsToken(managementService.userInfoFromAccessToken(token, tokenInfo.principal.`type`), token, tokenInfo.principal.`type`)
-          case Organization => PrincipalCredentialsToken(managementService.organizationInfoFromAccessToken(token), token)
-          case Database => PrincipalCredentialsToken(managementService.databaseInfoFromAccessToken(token), token)
-          case Device => PrincipalCredentialsToken(managementService.deviceFromAccessToken(token), token)
-        }
-        SecurityUtils.getSubject.login(pct)
+        SecurityUtils.getSubject.login(token)
     }
   }
 }

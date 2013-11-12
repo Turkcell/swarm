@@ -35,7 +35,7 @@ class HttpServletRequestSession(_request: HttpServletRequest, _host: String) ext
 
   def getHost: String = host
 
-  def getAttributeKeys: util.Collection[String] = java.util.Collections.list(request.getAttributeNames)
+  def getAttributeKeys: util.Collection[Object] = java.util.Collections.list(request.getAttributeNames).asInstanceOf[util.Collection[Object]]
 
   private def stringify(key: Any) = if (key == null) null else key.toString
 
