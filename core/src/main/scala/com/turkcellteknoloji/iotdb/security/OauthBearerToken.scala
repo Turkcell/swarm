@@ -13,14 +13,14 @@ import com.turkcellteknoloji.iotdb.{Config, UUIDGenerator}
  * Created by capacman on 11/11/13.
  */
 
-case class AuthPrincipalInfo(val `type`: AuthPrincipalType, val uuid: UUID)
+case class AuthPrincipalInfo( `type`: AuthPrincipalType,  uuid: UUID)
 
 object TokenType extends Enumeration {
   type TokenType = Value
   val Access, Activate, ResetPW, Confirm = Value
 }
 
-case class TokenInfo(val uuid: UUID, val `type`: TokenType.TokenType, created: DateTime, accessed: DateTime, inactive: DateTime, duration: Long, principal: AuthPrincipalInfo)
+case class TokenInfo( uuid: UUID,  `type`: TokenType.TokenType, created: DateTime, accessed: DateTime, inactive: DateTime, duration: Long, principal: AuthPrincipalInfo)
 
 object TokenCategory extends Enumeration {
   type TokenCategory = Value

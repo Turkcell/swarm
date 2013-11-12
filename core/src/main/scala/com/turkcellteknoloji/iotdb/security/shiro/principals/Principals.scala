@@ -24,12 +24,12 @@ trait UserPrincipal extends PrincipalIdentifier {
   override def activated = if (user.isDefined) user.get.activated else true
 }
 
-case class AdminUserPrincipal(override val user: Option[UserInfo], val accessTokenCredentials: Option[AccessTokenCredentials] = None) extends UserPrincipal
+case class AdminUserPrincipal(override val user: Option[UserInfo], accessTokenCredentials: Option[AccessTokenCredentials] = None) extends UserPrincipal
 
-case class DatabaseUserPrincipal(override val user: Option[UserInfo], val accessTokenCredentials: Option[AccessTokenCredentials] = None) extends UserPrincipal
+case class DatabaseUserPrincipal(override val user: Option[UserInfo], accessTokenCredentials: Option[AccessTokenCredentials] = None) extends UserPrincipal
 
-case class DatabasePrincipal(val database: DatabaseInfo, val accessTokenCredentials: Option[AccessTokenCredentials]) extends PrincipalIdentifier
+case class DatabasePrincipal(database: DatabaseInfo, accessTokenCredentials: Option[AccessTokenCredentials]) extends PrincipalIdentifier
 
-case class OrganizationPrincipal(val database: OrganizationInfo, val accessTokenCredentials: Option[AccessTokenCredentials]) extends PrincipalIdentifier
+case class OrganizationPrincipal(database: OrganizationInfo, accessTokenCredentials: Option[AccessTokenCredentials]) extends PrincipalIdentifier
 
-case class DevicePrincipal(val device: Device, val accessTokenCredentials: Option[AccessTokenCredentials]) extends PrincipalIdentifier
+case class DevicePrincipal(device: Device, accessTokenCredentials: Option[AccessTokenCredentials]) extends PrincipalIdentifier

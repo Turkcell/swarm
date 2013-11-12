@@ -5,7 +5,7 @@ import java.util.UUID
 /**
  * Created by Anil Chalil on 10/22/13.
  */
-case class Series(val id: UUID, val key: String, val name: Option[String], val tags: Set[String], val attributes: Map[String, String])
+case class Series(id: UUID, key: String, name: Option[String], tags: Set[String], attributes: Map[String, String])
 
 trait UserInfo {
   def id: UUID
@@ -25,23 +25,24 @@ trait UserInfo {
   def disabled: Boolean
 }
 
-case class AdminUser(val id: UUID, val name: String, val surname: String, val username: String, val email: String, val activated: Boolean, val confirmed: Boolean, val disabled: Boolean) extends UserInfo
+case class AdminUser(id: UUID, name: String, surname: String, username: String, email: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
 
-case class DatabaseUser(val id: UUID, val name: String, val surname: String, val username: String, val email: String, val activated: Boolean, val confirmed: Boolean, val disabled: Boolean) extends UserInfo
+case class DatabaseUser(id: UUID, name: String, surname: String, username: String, email: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
 
-case class OrganizationInfo(val id: UUID, val name: String)
+case class OrganizationInfo(id: UUID, name: String)
 
-case class Organization(val id: UUID, val name: String, users: Set[AdminUser])
+case class Organization(id: UUID, name: String, users: Set[AdminUser])
 
-case class DatabaseInfo(val id: UUID, val name: String)
+case class DatabaseInfo(id: UUID, name: String)
 
-case class Database(val id: UUID, val name: String, val owner: Organization)
+case class Database(id: UUID, name: String, owner: Organization)
 
-case class Device(val id: UUID, val deviceID: String)
+case class Device(id: UUID, deviceID: String)
 
 
 trait MetadataRepository {
   def createOrganization(name: String, users: Set[AdminUser]): Organization
-  def updateOrganization(org:Organization)
+
+  def updateOrganization(org: Organization)
 }
 
