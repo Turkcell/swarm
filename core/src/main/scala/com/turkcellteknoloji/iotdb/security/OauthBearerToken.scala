@@ -107,17 +107,17 @@ object OauthBearerToken {
   def apply(tokenInfo: TokenInfo, tokenCategory: TokenCategory, uuid: UUID) = {
     var l = 52
     if (tokenCategory.expires) {
-      l += 8;
+      l += 8
     }
     val bytes = ByteBuffer.allocate(l)
     bytes.put(uuid.asByteArray)
     var expires = Long.MaxValue
     if (tokenCategory.expires) {
-      expires = if (tokenInfo.duration > 0) uuid.timeStampInMillis + (tokenInfo.duration) else uuid.timeStampInMillis + tokenCategory.expiration
-      bytes.putLong(expires);
+      expires = if (tokenInfo.duration > 0) uuid.timeStampInMillis + tokenInfo.duration else uuid.timeStampInMillis + tokenCategory.expiration
+      bytes.putLong(expires)
     }
     bytes.put(tokenInfo.principal.uuid.asByteArray)
-    bytes.put(sha(tokenCategory, tokenInfo.principal.`type`, expires, uuid, tokenInfo.principal.uuid));
+    bytes.put(sha(tokenCategory, tokenInfo.principal.`type`, expires, uuid, tokenInfo.principal.uuid))
     new OauthBearerToken(tokenCategory.base64Prefix + tokenInfo.principal.`type`.base64Prefix + bytes.base64URLSafeString, tokenInfo.principal.`type`)
   }
 

@@ -6,7 +6,7 @@ import org.apache.oltu.oauth2.common.message.types.TokenType
 import com.turkcellteknoloji.iotdb.security.tokens.TokenService
 import com.turkcellteknoloji.iotdb.security.AuthPrincipalType._
 import com.turkcellteknoloji.iotdb.management.ManagementService
-import com.turkcellteknoloji.iotdb.security.shiro.{PrincipalCredentialsToken}
+import com.turkcellteknoloji.iotdb.security.shiro.PrincipalCredentialsToken
 import scala.util.Try
 import org.apache.shiro.SecurityUtils
 import com.turkcellteknoloji.iotdb.security.OauthBearerToken
@@ -23,10 +23,10 @@ trait OauthTokenFilter {
   protected def oauth()(implicit request: HttpServletRequest) {
     val acc_token = {
       if (request.getParameter("access_token") != null)
-        Some(new OauthBearerToken(request.getParameter("access_token")))
+        Some(OauthBearerToken(request.getParameter("access_token")))
       else {
         val rr = new OAuthAccessResourceRequest(request, TokenType.BEARER)
-        if (rr.getAccessToken == null) None else Some(new OauthBearerToken(rr.getAccessToken))
+        if (rr.getAccessToken == null) None else Some(OauthBearerToken(rr.getAccessToken))
       }
     }
     acc_token.map {

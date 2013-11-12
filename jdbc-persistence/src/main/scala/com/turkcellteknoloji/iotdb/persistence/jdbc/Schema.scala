@@ -35,7 +35,7 @@ trait MetadataComponent {
 
     val databaseByID = for {
       id <- Parameters[String]
-      d <- this if ((d.id is id) && (d.deleted is false))
+      d <- this if (d.id is id) && (d.deleted is false)
     } yield d.name
   }
 
@@ -60,14 +60,14 @@ trait MetadataComponent {
       id <- Parameters[String]
       t <- Tags
       a <- Attributes
-      s <- this if ((s.id is id) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false))
+      s <- this if (s.id is id) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false)
     } yield (s.name, s.key, t.name, a.name, a.value)
 
     val seriesByKey = for {
       (key, dbID) <- Parameters[(String, String)]
       t <- Tags
       a <- Attributes
-      s <- this if ((s.key is key) && (s.dbID is dbID) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false))
+      s <- this if (s.key is key) && (s.dbID is dbID) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false)
     } yield (s.name, s.id, t.name, a.name, a.value)
 
 
@@ -148,10 +148,10 @@ trait MetadataComponent {
     else {
       val series = list.groupBy(_._1)
       series.map {
-        case (seriesID, list) =>
-          val tags = (for (s <- list) yield s._4).toSet
-          val attributes = (for (s <- list) yield (s._5, s._6)).toMap
-          domain.Series(UUID.fromString(seriesID), list.head._2, list.head._3, tags, attributes)
+        case (seriesID, data) =>
+          val tags = (for (s <- data) yield s._4).toSet
+          val attributes = (for (s <- data) yield (s._5, s._6)).toMap
+          domain.Series(UUID.fromString(seriesID), data.head._2, data.head._3, tags, attributes)
       }.toList
     }
   }
@@ -183,7 +183,7 @@ trait MetadataComponent {
       t <- Tags
       a <- Attributes
       s <- Series if (s.key inSet keys.map(_.toString)) && (s.dbID is dbID.toString) && (s.deleted is false) && (s.id is a.seriesID) && (s.id is t.seriesID)
-    } yield (s.id)).list.toSet
+    } yield s.id).list.toSet
   }
 
   def insertTags(seriesID: String, tags: Set[String])(implicit session: Session) {

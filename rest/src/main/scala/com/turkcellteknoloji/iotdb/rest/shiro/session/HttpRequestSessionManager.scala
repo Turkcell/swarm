@@ -4,7 +4,6 @@ import org.apache.shiro.session.mgt.{SessionContext, SessionKey, SessionManager}
 import org.apache.shiro.session.Session
 import org.apache.shiro.web.util.WebUtils
 import javax.servlet.http.HttpServletRequest
-import com.turkcellteknoloji.iotdb.server.shiro.session.HttpServletRequestSession
 
 /**
  * Created by capacman on 10/31/13.
@@ -12,11 +11,11 @@ import com.turkcellteknoloji.iotdb.server.shiro.session.HttpServletRequestSessio
 class HttpRequestSessionManager extends SessionManager {
 
   def getHost(context: SessionContext) = {
-    val host = context.getHost()
+    val host = context.getHost
     if (host == null) {
       val request = WebUtils.getRequest(context)
       if (request != null) {
-        request.getRemoteHost()
+        request.getRemoteHost
       } else host
     } else host
 

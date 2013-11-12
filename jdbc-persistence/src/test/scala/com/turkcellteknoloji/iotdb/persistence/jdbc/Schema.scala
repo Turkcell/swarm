@@ -1,14 +1,13 @@
 package com.turkcellteknoloji.iotdb.persistence.jdbc
 
 import com.fasterxml.uuid.Generators
-import com.turkcellteknoloji.iotdb.domain
-import com.turkcellteknoloji.iotdb.domain.User
+import com.turkcellteknoloji.iotdb.domain._
 import org.junit.runner.RunWith
-import org.scalatest.{BeforeAndAfterAll, FlatSpec}
+import org.scalatest.{ConfigMap, BeforeAndAfterAllConfigMap, ShouldMatchers, FlatSpec}
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.matchers.ShouldMatchers
 import scala.slick.driver.{ExtendedProfile, HsqldbDriver}
 import scala.slick.session.Database
+import com.turkcellteknoloji.iotdb.domain
 
 /**
  * Created by capacman on 10/26/13.
@@ -21,22 +20,22 @@ trait HSQLInMemoryDB {
 }
 
 @RunWith(classOf[JUnitRunner])
-class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAll with MetadataComponent with Profile with HSQLInMemoryDB {
+class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with MetadataComponent with Profile with HSQLInMemoryDB {
 
   import Database.threadLocalSession
 
-  val sGenerator = Generators.randomBasedGenerator()
-  val dbGenerator = Generators.randomBasedGenerator()
-  val userGenerator = Generators.randomBasedGenerator()
+  val uuidGenerator = Generators.timeBasedGenerator()
 
-  val tmpUser = User(userGenerator.generate(), "anil", "halil", "user1", "user@user.com")
-  val databases = List(domain.Database(dbGenerator.generate(), "db1", tmpUser), domain.Database(dbGenerator.generate(), "db2", tmpUser))
+
+  val tmpUser = AdminUser(uuidGenerator.generate(), "anil", "halil", "user1", "user@user.com", activated = true, confirmed = true, disabled = false)
+  val tmpOrganizaion = Organization(uuidGenerator.generate(), "tmp", Set(tmpUser))
+  val databases = List(domain.Database(uuidGenerator.generate(), "db1", tmpOrganizaion), domain.Database(uuidGenerator.generate(), "db2", tmpOrganizaion))
   val series = List(
-    domain.Series(sGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1")),
-    domain.Series(sGenerator.generate(), "key2", Some("second series"), Set("tag1","tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3"))
+    domain.Series(uuidGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1")),
+    domain.Series(uuidGenerator.generate(), "key2", Some("second series"), Set("tag1", "tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3"))
   )
 
-  override def beforeAll(configMap: Map[String, Any]) {
+  override def beforeAll(configMap: ConfigMap) {
     db withSession {
       create
       databases.foreach(saveDatabase)
@@ -44,7 +43,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAll wit
     }
   }
 
-  override def afterAll(configMap: Map[String, Any]) {
+  override def afterAll(configMap: ConfigMap) {
     db withSession {
       drop
     }
@@ -69,28 +68,28 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAll wit
 
   "schema " should " get series by tags" in {
     db withSession {
-      getSeriesByTags(Set("tag1"), databases.head.id) should have size (2)
-      getSeriesByTags(Set("tag1","tag2"), databases.head.id) should have size (1)
-      getSeriesByTags(Set("tag1","tag2","tag3"), databases.head.id) should have size (1)
+      getSeriesByTags(Set("tag1"), databases.head.id) should have size 2
+      getSeriesByTags(Set("tag1", "tag2"), databases.head.id) should have size 1
+      getSeriesByTags(Set("tag1", "tag2", "tag3"), databases.head.id) should have size 1
     }
   }
 
   "schema " should " get series by attributes" in {
     db withSession {
-      getSeriesByAttributes(Map("attr1" -> "val1"), databases.head.id) should have size (1)
-      getSeriesByAttributes(Map("attr2" -> "val2"), databases.head.id) should have size (1)
-      getSeriesByAttributes(Map("attr1" -> "val1","attr2" -> "val2"), databases.head.id) should have size (0)
+      getSeriesByAttributes(Map("attr1" -> "val1"), databases.head.id) should have size 1
+      getSeriesByAttributes(Map("attr2" -> "val2"), databases.head.id) should have size 1
+      getSeriesByAttributes(Map("attr1" -> "val1", "attr2" -> "val2"), databases.head.id) should have size 0
     }
   }
 
   "schema " should " get series by intersection" in {
     db withSession {
-      getSeriesByAttributes(Map("attr1" -> "val1"), databases.head.id) should have size (1)
-      getSeriesIntersection(Set(),Set(),Set("tag1"),Map("attr1" -> "val1"),databases.head.id) should have size (1)
-      getSeriesIntersection(Set(),Set(),Set("tag1"),Map(),databases.head.id) should have size (2)
-      getSeriesIntersection(Set(),Set("key1"),Set("tag1"),Map(),databases.head.id) should have size (1)
-      getSeriesIntersection(Set(),Set("key2"),Set("tag1"),Map(),databases.head.id) should have size (1)
-      getSeriesIntersection(Set(),Set("key1"),Set("tag2"),Map(),databases.head.id) should have size (0)
+      getSeriesByAttributes(Map("attr1" -> "val1"), databases.head.id) should have size 1
+      getSeriesIntersection(Set(), Set(), Set("tag1"), Map("attr1" -> "val1"), databases.head.id) should have size 1
+      getSeriesIntersection(Set(), Set(), Set("tag1"), Map(), databases.head.id) should have size 2
+      getSeriesIntersection(Set(), Set("key1"), Set("tag1"), Map(), databases.head.id) should have size 1
+      getSeriesIntersection(Set(), Set("key2"), Set("tag1"), Map(), databases.head.id) should have size 1
+      getSeriesIntersection(Set(), Set("key1"), Set("tag2"), Map(), databases.head.id) should have size 0
     }
   }
 }

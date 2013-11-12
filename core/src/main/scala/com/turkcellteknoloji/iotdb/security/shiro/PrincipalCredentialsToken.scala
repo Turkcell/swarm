@@ -52,7 +52,7 @@ object PrincipalCredentialsToken {
     principalType match {
       case AuthPrincipalType.Admin => new PrincipalCredentialsToken(new AdminUserPrincipal(Some(info), Some(credentials)), credentials)
       case AuthPrincipalType.DatabaseUser => new PrincipalCredentialsToken(new DatabaseUserPrincipal(Some(info), Some(credentials)), credentials)
-      case _ => throw new IllegalArgumentException(s"${classOf[UserInfo].getSimpleName} cannot have ${classOf[AuthPrincipalType].getSimpleName} ${principalType}")
+      case _ => throw new IllegalArgumentException(s"${classOf[UserInfo].getSimpleName} cannot have ${classOf[AuthPrincipalType].getSimpleName} $principalType")
     }
   }
 
