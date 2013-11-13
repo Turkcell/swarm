@@ -15,6 +15,26 @@ trait NotTokenException extends TokenException
 
 trait BadTokenException extends TokenException
 
+trait BadClientIDException extends TokenException
+
+trait NotClientIDException extends TokenException
+
+trait NotClientSecretException extends TokenException
+
+object NotClientSecretException {
+  def apply(e: Throwable) = new RuntimeException(e) with NotClientSecretException
+}
+
+object NotClientIDException {
+  def apply(e: Throwable) = new RuntimeException(e) with NotClientIDException
+}
+
+object BadClientIDException {
+  def apply(e: Throwable) = new RuntimeException(e) with BadClientIDException
+}
+
+trait BadClientSecretException extends TokenException
+
 object BadTokenException {
   def apply(message: String) = new RuntimeException(message) with BadTokenException
 }

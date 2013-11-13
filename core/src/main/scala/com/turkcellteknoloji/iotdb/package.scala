@@ -16,10 +16,10 @@ import java.nio.ByteBuffer
 package object iotdb {
   val base64val = new Base64(true)
 
-  object RichUUID {
-    val kClockOffset = 0x01b21dd213814000L
-    val kClockMultiplierL = 10000L
-  }
+  // https://issues.scala-lang.org/browse/SI-5954 should be in companion RichUUID
+  val kClockOffset = 0x01b21dd213814000L
+  val kClockMultiplierL = 10000L
+
 
   final class RichUUID(val self: UUID) {
 
@@ -29,7 +29,7 @@ package object iotdb {
 
     def base64 = base64val.encodeToString(asByteArray)
 
-    def timeStampInMillis = if (self == null) 0L else (self.timestamp() - RichUUID.kClockOffset) / RichUUID.kClockMultiplierL
+    def timeStampInMillis = if (self == null) 0L else (self.timestamp() - kClockOffset) / kClockMultiplierL
 
   }
 

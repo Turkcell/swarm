@@ -17,7 +17,9 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   "token " should " construct an OauthBearerToken" in {
     val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), DateTime.now(), 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
-    val a = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
+    val direct = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
+    val fromStr = OauthBearerToken(direct.token)
+    fromStr shouldBe  direct
   }
 
   it should "throw NotTokenException" in {
@@ -53,4 +55,6 @@ class TokenTests extends FlatSpec with ShouldMatchers {
         OauthBearerToken(t.take(t.length - 1) + (if (t.last == '-') "_" else "-"))
     }
   }
+
+  "client id " should " "
 }

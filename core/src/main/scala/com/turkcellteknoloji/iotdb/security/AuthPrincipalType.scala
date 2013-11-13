@@ -48,9 +48,8 @@ object AuthPrincipalType extends Enumeration {
     }
 
     def generateOauthSecretKey = {
-      val timeStamp = System.currentTimeMillis()
       val bb = ByteBuffer.allocate(20)
-      bb.put((timeStamp + Config.clientTokenSecretSalt + UUIDGenerator.secretGenerator.generate()).sha)
+      bb.put((System.currentTimeMillis() + Config.clientTokenSecretSalt + UUIDGenerator.secretGenerator.generate()).sha)
       this.base64Prefix + bb.base64URLSafeString
     }
   }
