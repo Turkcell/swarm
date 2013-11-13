@@ -1,15 +1,19 @@
-package com.turkcellteknoloji.iotdb
+package com.turkcellteknoloji
 
+import org.apache.commons.codec.binary.Base64
 import java.util.UUID
 import com.fasterxml.uuid.impl.UUIDUtil
-import org.apache.commons.codec.binary.Base64
 import org.apache.commons.codec.digest.DigestUtils
 import java.nio.ByteBuffer
 
 /**
- * Created by capacman on 10/31/13.
+ * Created with IntelliJ IDEA.
+ * User: capacman
+ * Date: 11/13/13
+ * Time: 1:22 PM
+ * To change this template use File | Settings | File Templates.
  */
-package object domain {
+package object iotdb {
   val base64val = new Base64(true)
 
   object RichUUID {

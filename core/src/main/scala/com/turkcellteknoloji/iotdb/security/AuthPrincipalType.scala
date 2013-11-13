@@ -1,6 +1,6 @@
-package com.turkcellteknoloji.iotdb.security
+package com.turkcellteknoloji.iotdb
+package security
 
-import com.turkcellteknoloji.iotdb.domain._
 import java.nio.ByteBuffer
 import com.turkcellteknoloji.iotdb.{UUIDGenerator, Config}
 
