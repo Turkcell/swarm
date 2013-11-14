@@ -69,10 +69,28 @@ case class Device(id: UUID, deviceID: String) extends DeviceRef {
   def name = deviceID
 }
 
+trait MetadataRepositoryComponent {
+  val metadataRepository: MetadataRepository
 
-trait MetadataRepository {
-  def createOrganization(name: String, users: Set[AdminUser]): Organization
+  trait MetadataRepository {
+    def createOrganization(name: String, users: Set[AdminUser]): Organization
 
-  def updateOrganization(org: Organization)
+    def updateOrganization(org: Organization)
+
+    def getDevice(id: UUID): Option[Device]
+
+    def getOrganizationInfo(id: UUID): Option[OrganizationInfo]
+
+    def getOrganization(id: UUID): Option[Organization]
+
+    def getDatabaseInfo(id: UUID): Option[DatabaseInfo]
+
+    def getDatabase(id: UUID): Option[Database]
+
+    def getAdminUser(id: UUID): Option[AdminUser]
+
+    def getDatabaseUser(id: UUID): Option[DatabaseUser]
+  }
+
 }
 

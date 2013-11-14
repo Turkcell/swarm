@@ -36,6 +36,16 @@ trait NotClientSecretException extends TokenException
 
 trait InvalidClientIDSecretTokenException extends TokenException
 
+trait ExpiredTokenException extends TokenException {
+  val delta: Long
+}
+
+object ExpiredTokenException {
+  def apply(value: Long) = new RuntimeException(s"token expired $value millisecond ago!") with ExpiredTokenException {
+    val delta = value
+  }
+}
+
 object NotClientSecretException {
   def apply(e: Throwable) = new RuntimeException(e) with NotClientSecretException
 

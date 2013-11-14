@@ -51,6 +51,15 @@ class TokenTests extends FlatSpec with ShouldMatchers {
     }
   }
 
+  it should "throw ExpiredTokenException" in {
+    intercept[ExpiredTokenException]{
+      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), DateTime.now(), 1, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+      val token = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
+      Thread.sleep(10)
+      OauthBearerToken(token.token)
+    }
+  }
+
   it should "throw NotTokenException with match error" in {
     val cause = intercept[NotTokenException] {
       OauthBearerToken("invalida")
@@ -134,25 +143,25 @@ class TokenTests extends FlatSpec with ShouldMatchers {
   }
 
   it should " throw NotClientSecretException " in {
-    intercept[NotClientSecretException]{
+    intercept[NotClientSecretException] {
       ClientSecret("invalid")
     }
   }
 
   it should " throw NotClientSecretException for Admin prefix" in {
-    intercept[NotClientSecretException]{
+    intercept[NotClientSecretException] {
       ClientSecret(AuthPrincipalType.Admin.base64Prefix)
     }
-    intercept[NotClientSecretException]{
+    intercept[NotClientSecretException] {
       ClientSecret(AuthPrincipalType.DatabaseUser.base64Prefix)
     }
   }
 
   it should " throw IllegalArgumentException" in {
-    intercept[IllegalArgumentException]{
+    intercept[IllegalArgumentException] {
       ClientSecret(AuthPrincipalType.Admin)
     }
-    intercept[IllegalArgumentException]{
+    intercept[IllegalArgumentException] {
       ClientSecret(AuthPrincipalType.DatabaseUser)
     }
   }

@@ -46,7 +46,7 @@ trait PrincipalAuthenticationToken extends AuthenticationToken {
   def principalID: UUID
 }
 
-class OauthBearerToken private(val token: String, val authPrincipalType: AuthPrincipalType, val tokenID: UUID, val principalID: UUID) extends PrincipalAuthenticationToken {
+class OauthBearerToken private(val token: String, val authPrincipalType: AuthPrincipalType, val category: TokenCategory, val tokenID: UUID, val principalID: UUID, val expires: Long) extends PrincipalAuthenticationToken {
   def getPrincipal = token
 
   def getCredentials = token
@@ -58,13 +58,14 @@ class OauthBearerToken private(val token: String, val authPrincipalType: AuthPri
       (that canEqual this) &&
         token == that.token &&
         authPrincipalType == that.authPrincipalType &&
+        category == that.category &&
         tokenID == that.tokenID &&
         principalID == that.principalID
     case _ => false
   }
 
   override def hashCode(): Int = {
-    val state = Seq(token, authPrincipalType, tokenID, principalID)
+    val state = Seq(token, authPrincipalType, category, tokenID, principalID)
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 }
@@ -153,27 +154,27 @@ object ClientID {
   }
 }
 
-class ClientIDSecretToken private(private val clienID: ClientID, private val clientSecret: ClientSecret) extends PrincipalAuthenticationToken {
-  def getPrincipal = clienID
+class ClientIDSecretToken private(private val clientID: ClientID, private val clientSecret: ClientSecret) extends PrincipalAuthenticationToken {
+  def getPrincipal = clientID
 
   def getCredentials = clientSecret
 
-  def authPrincipalType: AuthPrincipalType = clienID.authPrincipalType
+  def authPrincipalType: AuthPrincipalType = clientID.authPrincipalType
 
-  def principalID: UUID = clienID.principalID
+  def principalID: UUID = clientID.principalID
 
   def canEqual(other: Any): Boolean = other.isInstanceOf[ClientIDSecretToken]
 
   override def equals(other: Any): Boolean = other match {
     case that: ClientIDSecretToken =>
       (that canEqual this) &&
-        clienID == that.clienID &&
+        clientID == that.clientID &&
         clientSecret == that.clientSecret
     case _ => false
   }
 
   override def hashCode(): Int = {
-    val state = Seq(clienID, clientSecret)
+    val state = Seq(clientID, clientSecret)
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 }
@@ -196,7 +197,7 @@ object OauthBearerToken {
     }
     bytes.put(tokenInfo.principal.uuid.asByteArray)
     bytes.put(sha(tokenCategory, tokenInfo.principal.`type`, expires, uuid, tokenInfo.principal.uuid))
-    new OauthBearerToken(tokenCategory.base64Prefix + tokenInfo.principal.`type`.base64Prefix + bytes.base64URLSafeString, tokenInfo.principal.`type`, uuid, tokenInfo.principal.uuid)
+    new OauthBearerToken(tokenCategory.base64Prefix + tokenInfo.principal.`type`.base64Prefix + bytes.base64URLSafeString, tokenInfo.principal.`type`, tokenCategory, uuid, tokenInfo.principal.uuid, expires)
   }
 
   def apply(token: String) = {
@@ -209,12 +210,15 @@ object OauthBearerToken {
       val bb = ByteBuffer.wrap(bytes)
       val tokenUUID = new UUID(bb.getLong, bb.getLong)
       val expires = bb.getLong
+      val delta=System.currentTimeMillis()-expires
+      if(delta>0)
+        throw ExpiredTokenException(delta)
       val principalID = new UUID(bb.getLong, bb.getLong)
       val shaExpected = sha(category, principleType, expires, tokenUUID, principalID)
       val shaActual = new Array[Byte](20)
       bb.get(shaActual)
       if (shaExpected.sameElements(shaActual)) {
-        new OauthBearerToken(token, principleType, tokenUUID, principalID)
+        new OauthBearerToken(token, principleType, category, tokenUUID, principalID, expires)
       } else throw BadTokenException("Invalid Token Signature")
     } catch {
       case e: MatchError => throw NotTokenException(e)
