@@ -1,3 +1,19 @@
+/*
+ * Copyright 2013 Turkcell Teknoloji Inc. and individual
+ * contributors by the 'Created by' comments.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.turkcellteknoloji.iotdb
 package security
 
@@ -8,10 +24,10 @@ import org.joda.time.DateTime
 import java.nio.{BufferUnderflowException, ByteBuffer}
 import com.turkcellteknoloji.iotdb.Config
 import com.turkcellteknoloji.iotdb.security.TokenCategory.TokenCategory
-import com.turkcellteknoloji.iotdb.domain.{DeviceRef, DatabaseRef, OrganizationRef, EntityRef}
+import com.turkcellteknoloji.iotdb.domain._
 
 /**
- * Created by capacman on 11/11/13.
+ * Created by Anil Chalil
  */
 
 case class AuthPrincipalInfo(`type`: AuthPrincipalType, uuid: UUID)
@@ -93,17 +109,34 @@ class ClientSecret private(val secret: String, val authPrincipalType: AuthPrinci
 object ClientSecret {
   def apply(secret: String) = {
     try {
-      new ClientSecret(secret, AuthPrincipalType.fromBase64(secret.substring(0, AuthPrincipalTypeValue.base64prefixLength)))
+      if (secret.length < 4)
+        throw NotClientSecretException("secret length could not be less than 4")
+      val principal = AuthPrincipalType.fromBase64(secret.substring(0, AuthPrincipalTypeValue.base64prefixLength))
+      if (principal == AuthPrincipalType.Admin || principal == AuthPrincipalType.DatabaseUser)
+        throw NotClientSecretException(s"clientSecret principal type cannot be $principal")
+      new ClientSecret(secret, principal)
     } catch {
       case e: MatchError => throw NotClientSecretException(e)
     }
+  }
+
+  def apply(principalType: AuthPrincipalType) = {
+    if (principalType == AuthPrincipalType.Admin || principalType == AuthPrincipalType.DatabaseUser)
+      throw new IllegalArgumentException(s"could not generate ClientSecret for $principalType")
+    val bb = ByteBuffer.allocate(20)
+    bb.put((System.currentTimeMillis() + Config.clientTokenSecretSalt + UUIDGenerator.secretGenerator.generate()).sha)
+    new ClientSecret(principalType.base64Prefix + bb.base64URLSafeString, principalType)
   }
 }
 
 object ClientID {
   def apply(id: String) = {
     try {
+      if (id.length < AuthPrincipalTypeValue.base64prefixLength)
+        throw NotClientIDException(s"clientID length could not be less than ${AuthPrincipalTypeValue.base64prefixLength}")
       val principalType = AuthPrincipalType.fromBase64(id.substring(0, AuthPrincipalTypeValue.base64prefixLength))
+      if (principalType == AuthPrincipalType.Admin || principalType == AuthPrincipalType.DatabaseUser)
+        throw NotClientIDException(s"clientID principal type cannot be $principalType")
       val bb = ByteBuffer.wrap(id.substring(AuthPrincipalTypeValue.base64prefixLength).decodeBase64)
       new ClientID(id, new UUID(bb.getLong, bb.getLong), principalType)
     } catch {
@@ -116,10 +149,11 @@ object ClientID {
     case o: OrganizationRef => new ClientID(AuthPrincipalType.Organization.base64Prefix + o.id.base64, o.id, AuthPrincipalType.Organization)
     case d: DatabaseRef => new ClientID(AuthPrincipalType.Database.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Database)
     case d: DeviceRef => new ClientID(AuthPrincipalType.Device.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Device)
+    case _ => throw new IllegalArgumentException(s"could not generate clientID for $ref")
   }
 }
 
-class ClientIDSecretToken private(private val clienID: ClientID, private val clientSecret: String) extends PrincipalAuthenticationToken {
+class ClientIDSecretToken private(private val clienID: ClientID, private val clientSecret: ClientSecret) extends PrincipalAuthenticationToken {
   def getPrincipal = clienID
 
   def getCredentials = clientSecret
@@ -190,5 +224,19 @@ object OauthBearerToken {
 }
 
 object ClientIDSecretToken {
+  def apply(id: String, secret: String) = {
+    val clientID = ClientID(id)
+    val clientSecret = ClientSecret(secret)
+    checkPrincipals(clientID, clientSecret)
+    new ClientIDSecretToken(clientID, clientSecret)
+  }
 
+  def apply(id: ClientID, secret: ClientSecret) = {
+    checkPrincipals(id, secret)
+    new ClientIDSecretToken(id, secret)
+  }
+
+  def checkPrincipals(clientID: ClientID, clientSecret: ClientSecret) {
+    if (clientID.authPrincipalType != clientSecret.authPrincipalType) throw InvalidClientIDSecretTokenException("clientID and clientSecret principalType should be same!")
+  }
 }
