@@ -37,12 +37,16 @@ object TokenType extends Enumeration {
 }
 
 
-
-
 trait PrincipalAuthenticationToken extends AuthenticationToken {
   def authPrincipalType: AuthPrincipalType
 
   def principalID: UUID
+}
+
+case class UsernamePasswordToken(username: String, password: String, principalType: AuthPrincipalType) extends AuthenticationToken {
+  def getPrincipal = username
+
+  def getCredentials = password
 }
 
 class OauthBearerToken private(val token: String, val authPrincipalType: AuthPrincipalType, val category: TokenCategory, val tokenID: UUID, val principalID: UUID, val expires: Long) extends PrincipalAuthenticationToken {
