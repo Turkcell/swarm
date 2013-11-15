@@ -152,3 +152,11 @@ trait AdminUserRealm extends UserInfoRealmBase {
     case _ => false
   }
 }
+
+trait DatabaseUserRealm extends UserInfoRealmBase {
+  this: TokenRepositoryComponent with ClientRepositoryComponent =>
+  override def supports(token: AuthenticationToken) = token match {
+    case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.DatabaseUser
+    case _ => false
+  }
+}
