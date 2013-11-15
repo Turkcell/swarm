@@ -17,13 +17,14 @@
 package com.turkcellteknoloji.iotdb
 
 import com.typesafe.config.ConfigFactory
+import org.apache.shiro.util.ByteSource
 
 /**
  * Created by Anil Chalil on 11/11/13.
  */
 object Config {
   val conf = ConfigFactory.load
-  val clientTokenSecretSalt = conf.getString("oauth.clientSecretSalt")
-  val tokenSecretSalt = conf.getString("oauth.tokenSecretSalt")
-
+  val clientTokenSecretSalt = conf.getString("security.oauth.clientSecretSalt")
+  val tokenSecretSalt = conf.getString("security.oauth.tokenSecretSalt")
+  val userInfoHash = ByteSource.Util.bytes(conf.getString("security.users.credentialSalt"))
 }

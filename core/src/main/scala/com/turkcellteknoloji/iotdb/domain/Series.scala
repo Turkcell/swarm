@@ -17,22 +17,18 @@
 package com.turkcellteknoloji.iotdb.domain
 
 import java.util.UUID
+import scala.concurrent._
 
 /**
  * Created by Anil Chalil on 10/22/13.
  */
 case class Series(id: UUID, key: String, name: Option[String], tags: Set[String], attributes: Map[String, String])
 
-trait UserInfo {
+trait IDEntity {
   def id: UUID
+}
 
-  def username: String
-
-  def name: String
-
-  def surname: String
-
-  def email: String
+trait Client extends IDEntity {
 
   def activated: Boolean
 
@@ -41,21 +37,29 @@ trait UserInfo {
   def disabled: Boolean
 }
 
-case class AdminUser(id: UUID, name: String, surname: String, username: String, email: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
+trait UserInfo extends Client {
+  def username: String
 
-case class DatabaseUser(id: UUID, name: String, surname: String, username: String, email: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
+  def name: String
 
-trait EntityRef {
-  def id: UUID
+  def surname: String
 
+  def email: String
+
+  def credential: String
+}
+
+case class AdminUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
+
+case class DatabaseUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
+
+trait ResourceRef extends IDEntity {
   def name: String
 }
 
-trait OrganizationRef extends EntityRef
+trait OrganizationRef extends ResourceRef
 
-trait DatabaseRef extends EntityRef
-
-trait DeviceRef extends EntityRef
+trait DatabaseRef extends ResourceRef
 
 case class OrganizationInfo(id: UUID, name: String) extends OrganizationRef
 
@@ -65,32 +69,51 @@ case class DatabaseInfo(id: UUID, name: String) extends DatabaseRef
 
 case class Database(id: UUID, name: String, owner: Organization) extends DatabaseRef
 
-case class Device(id: UUID, deviceID: String) extends DeviceRef {
-  def name = deviceID
+case class Device(id: UUID, deviceID: String, activated: Boolean, disabled: Boolean) extends Client {
+  def confirmed = true
 }
 
-trait MetadataRepositoryComponent {
-  val metadataRepository: MetadataRepository
+trait ResourceRepository {
+  def getOrganizationInfoAsync(uuid: UUID): Future[Option[OrganizationInfo]]
 
-  trait MetadataRepository {
-    def createOrganization(name: String, users: Set[AdminUser]): Organization
+  def getDatabaseInfoAsync(uuid: UUID): Future[Option[DatabaseInfo]]
 
-    def updateOrganization(org: Organization)
+  def createOrganization(name: String, users: Set[AdminUser]): Organization
 
-    def getDevice(id: UUID): Option[Device]
+  def updateOrganization(org: Organization)
 
-    def getOrganizationInfo(id: UUID): Option[OrganizationInfo]
+  def getDevice(id: UUID): Option[Device]
 
-    def getOrganization(id: UUID): Option[Organization]
+  def getOrganizationInfo(id: UUID): Option[OrganizationInfo]
 
-    def getDatabaseInfo(id: UUID): Option[DatabaseInfo]
+  def getOrganization(id: UUID): Option[Organization]
 
-    def getDatabase(id: UUID): Option[Database]
+  def getDatabaseInfo(id: UUID): Option[DatabaseInfo]
 
-    def getAdminUser(id: UUID): Option[AdminUser]
+  def getDatabase(id: UUID): Option[Database]
+}
 
-    def getDatabaseUser(id: UUID): Option[DatabaseUser]
-  }
+trait ResourceRepositoryComponent {
+  val resourceRepository: ResourceRepository
+}
+
+trait ClientRepository {
+  def getAdminUser(uuid: UUID): Option[UserInfo]
+
+  def getDatabaseUser(uuid: UUID): Option[UserInfo]
+
+  def getDevice(uuid: UUID): Option[Device]
+
+  def getAdminUserAsync(uuid: UUID): Future[Option[UserInfo]]
+
+  def getDatabaseUserAsync(uuid: UUID): Future[Option[UserInfo]]
+
+  def getDeviceAsync(uuid: UUID): Future[Option[Device]]
+}
+
+trait ClientRepositoryComponent {
+  val clientRepository: ClientRepository
+
 
 }
 

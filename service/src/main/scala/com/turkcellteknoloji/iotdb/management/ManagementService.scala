@@ -23,29 +23,43 @@ import com.turkcellteknoloji.iotdb.domain.Device
 import java.util.UUID
 import com.turkcellteknoloji.iotdb.security.tokens.TokenServiceComponent
 import scala.concurrent._
+import com.turkcellteknoloji.iotdb.security.{AuthPrincipalType, ClientID, OauthBearerToken}
 
 /**
  * Created by Anil Chalil on 11/1/13.
  */
 trait ManagementServiceComponent {
-  this: TokenServiceComponent with MetadataRepositoryComponent =>
+  this: TokenServiceComponent with ResourceRepositoryComponent =>
   val managementService: ManagementService
 
   trait ManagementService {
+    def getUserInfoAsync(token: OauthBearerToken): Future[Option[UserInfo]]
+
+    def getUserInfo(token: OauthBearerToken): Option[UserInfo]
+
+    def getUserInfoAsync(principal: String): Future[Option[UserInfo]]
+
+    def getEntityInfoAsync(token: OauthBearerToken): Future[Option[ResourceRef]]
+
+    def getEntityInfoAsync(clientID: ClientID): Future[Option[ResourceRef]]
 
     def createOrganization(name: String, adminUsers: Set[AdminUser]): Organization
 
     def createDatabase(name: String, orgID: UUID): Database
 
-    def getOrganizationInfo(orgID: UUID): Option[OrganizationInfo] = metadataRepository.getOrganizationInfo(orgID)
+    def getOrganizationInfo(orgID: UUID): Option[OrganizationInfo] = resourceRepository.getOrganizationInfo(orgID)
 
     def getOrganizationInfoAsync(orgID: UUID): Future[Option[OrganizationInfo]] = future {
-      metadataRepository.getOrganizationInfo(orgID)
+      resourceRepository.getOrganizationInfo(orgID)
     }
 
-    def getDatabaseInfo(dbID: UUID): Option[DatabaseInfo] = metadataRepository.getDatabaseInfo(dbID)
+    def getDatabaseInfo(dbID: UUID): Option[DatabaseInfo] = resourceRepository.getDatabaseInfo(dbID)
 
-    def getDevice(deviceID: UUID): Option[Device] = metadataRepository.getDevice(deviceID)
+    def getDatabaseInfoAsync(uuid: UUID) = future {
+      getDatabaseInfo(uuid)
+    }
+
+    def getDevice(deviceID: UUID): Option[Device] = resourceRepository.getDevice(deviceID)
 
   }
 

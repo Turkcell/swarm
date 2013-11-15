@@ -20,7 +20,6 @@ package security
 import org.apache.shiro.authc.AuthenticationToken
 import com.turkcellteknoloji.iotdb.security.AuthPrincipalType.{AuthPrincipalTypeValue, AuthPrincipalType}
 import java.util.UUID
-import org.joda.time.DateTime
 import java.nio.{BufferUnderflowException, ByteBuffer}
 import com.turkcellteknoloji.iotdb.Config
 import com.turkcellteknoloji.iotdb.security.TokenCategory.TokenCategory
@@ -37,7 +36,7 @@ object TokenType extends Enumeration {
   val Access, Activate, ResetPW, Confirm = Value
 }
 
-case class TokenInfo(uuid: UUID, `type`: TokenType.TokenType, created: DateTime, accessed: DateTime, inactive: DateTime, duration: Long, principal: AuthPrincipalInfo)
+
 
 
 trait PrincipalAuthenticationToken extends AuthenticationToken {
@@ -146,10 +145,10 @@ object ClientID {
     }
   }
 
-  def apply(ref: EntityRef) = ref match {
+  def apply(ref: IDEntity) = ref match {
     case o: OrganizationRef => new ClientID(AuthPrincipalType.Organization.base64Prefix + o.id.base64, o.id, AuthPrincipalType.Organization)
     case d: DatabaseRef => new ClientID(AuthPrincipalType.Database.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Database)
-    case d: DeviceRef => new ClientID(AuthPrincipalType.Device.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Device)
+    case d: Device => new ClientID(AuthPrincipalType.Device.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Device)
     case _ => throw new IllegalArgumentException(s"could not generate clientID for $ref")
   }
 }
@@ -210,8 +209,8 @@ object OauthBearerToken {
       val bb = ByteBuffer.wrap(bytes)
       val tokenUUID = new UUID(bb.getLong, bb.getLong)
       val expires = bb.getLong
-      val delta=System.currentTimeMillis()-expires
-      if(delta>0)
+      val delta = System.currentTimeMillis() - expires
+      if (delta > 0)
         throw ExpiredTokenException(delta)
       val principalID = new UUID(bb.getLong, bb.getLong)
       val shaExpected = sha(category, principleType, expires, tokenUUID, principalID)
