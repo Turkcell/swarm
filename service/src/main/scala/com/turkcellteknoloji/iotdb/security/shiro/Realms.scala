@@ -36,127 +36,168 @@ class ClientIDSecretBearerCredentialsMatcher extends CredentialsMatcher {
   }
 }
 
-trait BearerRealmBase {
-  this: TokenRepositoryComponent with Realm =>
+trait BearerRealmBaseComponent {
+  this: TokenRepositoryComponent =>
 
-  protected def authorizeBearer[T <: IDEntity](idEntity: Future[Option[T]], bearerToken: OauthBearerToken, check: T => Unit = null) = {
-    //TODO check tokenInfo since it can return none(means somebody know salt value or cassandra has problem)
-    val tokenInfo = tokenRepository.getTokenInfo(bearerToken)
-    if (bearerToken.authPrincipalType != tokenInfo.principal.`type` || bearerToken.principalID != tokenInfo.principal.uuid)
-      throw BadTokenException("token is forged")
-    Await.result(idEntity.map {
-      case Some(entity) =>
-        if (check != null)
-          check(entity)
-        new SimpleAuthenticationInfo(entity, tokenInfo, getName)
-      case None => throw new AuthenticationException(s"${idEntity.getClass().getName} not found for ${bearerToken.principalID}")
-    }, 0 nanos)
-  }
-}
-
-trait ClientIDSecretRealmBase {
-  this: TokenRepositoryComponent with Realm =>
-
-  protected def authorizeClientIDSecret(idEntity: Future[Option[IDEntity]], clientIDSecret: ClientIDSecretToken) = {
-    val secret = tokenRepository.getClientSecret(clientIDSecret.principalID.asInstanceOf[ClientID])
-    if (clientIDSecret.authPrincipalType != secret.authPrincipalType)
-      throw BadTokenException("token is forged")
-    Await.result(idEntity.map {
-      case Some(entity) => new SimpleAuthenticationInfo(entity, secret, getName)
-      case None => throw new AuthenticationException(s"${idEntity.getClass().getName} not found for ${clientIDSecret.principalID}")
-    }, 0 nanos)
-  }
-}
-
-trait ClientIDSecretBearerRealmBase extends AuthorizingRealm with ClientIDSecretRealmBase with BearerRealmBase {
-  this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
-
-
-  override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
-
-    case bearerToken: OauthBearerToken =>
-      bearerToken.authPrincipalType match {
-        case AuthPrincipalType.Device => authorizeBearer(clientRepository.getDeviceAsync(bearerToken.principalID), bearerToken)
-        case AuthPrincipalType.Database => authorizeBearer(resourceRepository.getDatabaseInfoAsync(bearerToken.principalID), bearerToken)
-        case AuthPrincipalType.Organization => authorizeBearer(resourceRepository.getOrganizationInfoAsync(bearerToken.principalID), bearerToken)
-      }
-
-
-    case clientIDSecret: ClientIDSecretToken =>
-      clientIDSecret.authPrincipalType match {
-        case AuthPrincipalType.Device => authorizeClientIDSecret(clientRepository.getDeviceAsync(clientIDSecret.principalID), clientIDSecret)
-        case AuthPrincipalType.Database => authorizeClientIDSecret(resourceRepository.getDatabaseInfoAsync(clientIDSecret.principalID), clientIDSecret)
-        case AuthPrincipalType.Organization => authorizeClientIDSecret(resourceRepository.getOrganizationInfoAsync(clientIDSecret.principalID), clientIDSecret)
-      }
-  }
-}
-
-trait OrganizationRealmBase extends ClientIDSecretBearerRealmBase {
-  this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
-  override def supports(token: AuthenticationToken) = token match {
-    case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Organization
-    case _ => false
-  }
-}
-
-trait DatabaseRealmBase extends ClientIDSecretBearerRealmBase {
-  this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
-  override def supports(token: AuthenticationToken) = token match {
-    case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Database
-    case _ => false
-  }
-}
-
-trait DeviceRealmBase extends ClientIDSecretBearerRealmBase {
-  this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
-  override def supports(token: AuthenticationToken) = token match {
-    case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Device
-    case _ => false
-  }
-}
-
-trait UserInfoRealmBase extends AuthorizingRealm with BearerRealmBase {
-  this: TokenRepositoryComponent with ClientRepositoryComponent =>
-
-  def getPrincipal(principal: String): Future[Option[UserInfo]]
-
-  def checkClient(client: Client) {
-    if (!client.activated)
-      throw new AuthenticationException("client is not activated")
-    if (client.disabled)
-      throw new AuthenticationException("client is disabled")
-  }
-
-  override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
-    case bearerToken: OauthBearerToken =>
-      bearerToken.authPrincipalType match {
-        case AuthPrincipalType.Admin => authorizeBearer(clientRepository.getAdminUserAsync(bearerToken.principalID), bearerToken, checkClient)
-        case AuthPrincipalType.DatabaseUser => authorizeBearer(clientRepository.getDatabaseUserAsync(bearerToken.principalID), bearerToken, checkClient)
-      }
-
-    case usernamePasswordToken: UsernamePasswordToken =>
-      val userInfoF = getPrincipal(usernamePasswordToken.getPrincipal)
-      Await.result(userInfoF.map {
-        case Some(userInfo) =>
-          checkClient(userInfo)
-          new SimpleAuthenticationInfo(if (userInfo.username == usernamePasswordToken.getPrincipal) userInfo.username else userInfo.email, userInfo.credential, Config.userInfoHash, getName)
-        case None => throw new AuthenticationException(s"userinfo not found for ${usernamePasswordToken.getPrincipal}")
+  trait BearerRealmBase extends Realm {
+    protected def authorizeBearer[T <: IDEntity](idEntity: Future[Option[T]], bearerToken: OauthBearerToken, check: T => Unit = null) = {
+      //TODO check tokenInfo since it can return none(means somebody know salt value or cassandra has problem)
+      val tokenInfo = tokenRepository.getTokenInfo(bearerToken)
+      if (bearerToken.authPrincipalType != tokenInfo.principal.`type` || bearerToken.principalID != tokenInfo.principal.uuid)
+        throw BadTokenException("token is forged")
+      Await.result(idEntity.map {
+        case Some(entity) =>
+          if (check != null)
+            check(entity)
+          new SimpleAuthenticationInfo(entity, tokenInfo, getName)
+        case None => throw new AuthenticationException(s"${idEntity.getClass().getName} not found for ${bearerToken.principalID}")
       }, 0 nanos)
+    }
   }
+
 }
 
-trait AdminUserRealm extends UserInfoRealmBase {
-  this: TokenRepositoryComponent with ClientRepositoryComponent =>
-  override def supports(token: AuthenticationToken) = token match {
-    case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.Admin
-    case _ => false
+trait ClientIDSecretRealmBaseComponent {
+  this: TokenRepositoryComponent =>
+
+  trait ClientIDSecretRealmBase extends Realm {
+    protected def authorizeClientIDSecret(idEntity: Future[Option[IDEntity]], clientIDSecret: ClientIDSecretToken) = {
+      val secret = tokenRepository.getClientSecret(clientIDSecret.principalID.asInstanceOf[ClientID])
+      if (clientIDSecret.authPrincipalType != secret.authPrincipalType)
+        throw BadTokenException("token is forged")
+      Await.result(idEntity.map {
+        case Some(entity) => new SimpleAuthenticationInfo(entity, secret, getName)
+        case None => throw new AuthenticationException(s"${idEntity.getClass().getName} not found for ${clientIDSecret.principalID}")
+      }, 0 nanos)
+    }
   }
+
 }
 
-trait DatabaseUserRealm extends UserInfoRealmBase {
-  this: TokenRepositoryComponent with ClientRepositoryComponent =>
-  override def supports(token: AuthenticationToken) = token match {
-    case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.DatabaseUser
-    case _ => false
+trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretBearerRealmBaseComponent with BearerRealmBaseComponent {
+  this: TokenRepositoryComponent =>
+
+  trait ClientIDSecretBearerRealmBase extends AuthorizingRealm with BearerRealmBase with ClientIDSecretBearerRealmBase {
+    this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
+
+
+    override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
+
+      case bearerToken: OauthBearerToken =>
+        bearerToken.authPrincipalType match {
+          case AuthPrincipalType.Device => authorizeBearer(clientRepository.getDeviceAsync(bearerToken.principalID), bearerToken)
+          case AuthPrincipalType.Database => authorizeBearer(resourceRepository.getDatabaseInfoAsync(bearerToken.principalID), bearerToken)
+          case AuthPrincipalType.Organization => authorizeBearer(resourceRepository.getOrganizationInfoAsync(bearerToken.principalID), bearerToken)
+        }
+
+
+      case clientIDSecret: ClientIDSecretToken =>
+        clientIDSecret.authPrincipalType match {
+          case AuthPrincipalType.Device => authorizeClientIDSecret(clientRepository.getDeviceAsync(clientIDSecret.principalID), clientIDSecret)
+          case AuthPrincipalType.Database => authorizeClientIDSecret(resourceRepository.getDatabaseInfoAsync(clientIDSecret.principalID), clientIDSecret)
+          case AuthPrincipalType.Organization => authorizeClientIDSecret(resourceRepository.getOrganizationInfoAsync(clientIDSecret.principalID), clientIDSecret)
+        }
+    }
   }
+
 }
+
+trait OrganizationRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
+  this: TokenRepositoryComponent =>
+
+  trait OrganizationRealm extends ClientIDSecretBearerRealmBase {
+    this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
+    override def supports(token: AuthenticationToken) = token match {
+      case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Organization
+      case _ => false
+    }
+  }
+
+}
+
+trait DatabaseRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
+  this: TokenRepositoryComponent =>
+
+  trait DatabaseRealm extends ClientIDSecretBearerRealmBase {
+    this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
+    override def supports(token: AuthenticationToken) = token match {
+      case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Database
+      case _ => false
+    }
+  }
+
+}
+
+trait DeviceRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
+  this: TokenRepositoryComponent =>
+
+  trait DeviceRealm extends ClientIDSecretBearerRealmBase {
+    this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
+    override def supports(token: AuthenticationToken) = token match {
+      case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Device
+      case _ => false
+    }
+  }
+
+}
+
+trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
+  this: TokenRepositoryComponent with ClientRepositoryComponent =>
+
+  trait UserInfoRealmBase extends AuthorizingRealm with BearerRealmBase {
+
+    def getPrincipal(principal: String): Future[Option[UserInfo]]
+
+    def checkClient(client: Client) {
+      if (!client.activated)
+        throw new AuthenticationException("client is not activated")
+      if (client.disabled)
+        throw new AuthenticationException("client is disabled")
+    }
+
+    override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
+      case bearerToken: OauthBearerToken =>
+        bearerToken.authPrincipalType match {
+          case AuthPrincipalType.Admin => authorizeBearer(clientRepository.getAdminUserAsync(bearerToken.principalID), bearerToken, checkClient)
+          case AuthPrincipalType.DatabaseUser => authorizeBearer(clientRepository.getDatabaseUserAsync(bearerToken.principalID), bearerToken, checkClient)
+        }
+
+      case usernamePasswordToken: UsernamePasswordToken =>
+        val userInfoF = getPrincipal(usernamePasswordToken.getPrincipal)
+        Await.result(userInfoF.map {
+          case Some(userInfo) =>
+            checkClient(userInfo)
+            new SimpleAuthenticationInfo(if (userInfo.username == usernamePasswordToken.getPrincipal) userInfo.username else userInfo.email, userInfo.credential, Config.userInfoHash, getName)
+          case None => throw new AuthenticationException(s"userinfo not found for ${usernamePasswordToken.getPrincipal}")
+        }, 0 nanos)
+    }
+  }
+
+}
+
+trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
+  this: TokenRepositoryComponent with ClientRepositoryComponent =>
+
+  trait AdminUserRealm extends UserInfoRealmBase {
+    this: TokenRepositoryComponent with ClientRepositoryComponent =>
+    override def supports(token: AuthenticationToken) = token match {
+      case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.Admin
+      case _ => false
+    }
+  }
+
+}
+
+trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
+  this: TokenRepositoryComponent with ClientRepositoryComponent =>
+
+  trait DatabaseUserRealm extends UserInfoRealmBase {
+    this: TokenRepositoryComponent with ClientRepositoryComponent =>
+    override def supports(token: AuthenticationToken) = token match {
+      case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.DatabaseUser
+      case _ => false
+    }
+  }
+
+}
+

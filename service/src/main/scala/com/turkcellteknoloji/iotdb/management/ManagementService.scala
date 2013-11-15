@@ -21,15 +21,14 @@ import com.turkcellteknoloji.iotdb.domain.OrganizationInfo
 import com.turkcellteknoloji.iotdb.domain.DatabaseInfo
 import com.turkcellteknoloji.iotdb.domain.Device
 import java.util.UUID
-import com.turkcellteknoloji.iotdb.security.tokens.TokenServiceComponent
 import scala.concurrent._
-import com.turkcellteknoloji.iotdb.security.{AuthPrincipalType, ClientID, OauthBearerToken}
+import com.turkcellteknoloji.iotdb.security.{TokenRepositoryComponent, ClientID, OauthBearerToken}
 
 /**
  * Created by Anil Chalil on 11/1/13.
  */
 trait ManagementServiceComponent {
-  this: TokenServiceComponent with ResourceRepositoryComponent =>
+  this: TokenRepositoryComponent with ResourceRepositoryComponent =>
   val managementService: ManagementService
 
   trait ManagementService {
