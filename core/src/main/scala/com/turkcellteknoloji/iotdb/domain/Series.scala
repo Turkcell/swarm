@@ -120,9 +120,13 @@ trait ClientRepository {
 
   def getDeviceAsync(uuid: UUID): Future[Option[Device]]
 
-  def saveAdminUser(user: UserInfo): Option[UserInfo]
+  def saveAdminUser(user: UserInfo):Unit
+
+  def saveDatabaseUser(user: UserInfo):Unit
+
+  def upsertAdminUser(user: UserInfo): Option[UserInfo]
   
-  def saveDatabaseUser(user: UserInfo): Option[UserInfo]
+  def upsertDatabaseUser(user: UserInfo): Option[UserInfo]
 }
 
 trait ClientRepositoryComponent {

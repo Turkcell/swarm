@@ -15,7 +15,7 @@ import com.turkcellteknoloji.iotdb.Config
 import com.turkcellteknoloji.iotdb.UUIDGenerator
 import com.turkcellteknoloji.iotdb.domain.DatabaseUser
 trait RealmTestsBase extends BeforeAndAfterEach {
-  this: Suite with InMemoryComponents with DatabaseUserRealmComponent=>
+  this: Suite with InMemoryComponents =>
   
   override def beforeEach {
     SecurityUtils.getSubject().logout()

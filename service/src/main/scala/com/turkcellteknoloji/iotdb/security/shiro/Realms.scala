@@ -183,8 +183,11 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
   trait AdminUserRealm extends UserInfoRealmBase {
     override def supports(token: AuthenticationToken) = token match {
       case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.Admin
+      case t: OauthBearerToken => t.authPrincipalType == AuthPrincipalType.Admin
       case _ => false
     }
+    def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getAdminUserByEmail(principal)
+    def getPrincipalByUsername(principal: String): Option[UserInfo] = clientRepository.getAdminUserByUsername(principal)
   }
 
 }

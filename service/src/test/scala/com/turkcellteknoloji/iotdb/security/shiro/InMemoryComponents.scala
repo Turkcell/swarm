@@ -18,7 +18,8 @@ import com.turkcellteknoloji.iotdb.security.TokenInfo
 import com.turkcellteknoloji.iotdb.domain.ResourceRepository
 import com.turkcellteknoloji.iotdb.security.OauthBearerToken
 import scala.concurrent._
-import scala.collection.JavaConverters.mapAsScalaConcurrentMapConverter
+import scala.collection.mutable.Map
+import scala.collection.JavaConverters._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -36,13 +37,9 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
   }
 
   val clientRepository = new ClientRepository {
-    val adminStore = (new java.util.concurrent.ConcurrentHashMap[UUID, UserInfo]).asScala
-    val adminStoreEmail = (new java.util.concurrent.ConcurrentHashMap[String, UserInfo]).asScala
-    val adminStoreUsername = (new java.util.concurrent.ConcurrentHashMap[String, UserInfo]).asScala
-    val dbUserStore = (new java.util.concurrent.ConcurrentHashMap[UUID, UserInfo]).asScala
-    val dbUserStoreEmail = (new java.util.concurrent.ConcurrentHashMap[String, UserInfo]).asScala
-    val dbUserStoreUsername = (new java.util.concurrent.ConcurrentHashMap[String, UserInfo]).asScala
-    val deviceStore = (new java.util.concurrent.ConcurrentHashMap[UUID, Device]).asScala
+    val adminStore = Map[UUID, UserInfo]()
+    val dbUserStore = Map[UUID, UserInfo]()
+    val deviceStore = Map[UUID, Device]()
     def getDatabaseUserAsync(uuid: UUID): Future[Option[UserInfo]] = future { getDatabaseUser(uuid) }
 
     def getAdminUser(uuid: UUID): Option[UserInfo] = this.synchronized { adminStore.get(uuid) }
@@ -55,55 +52,47 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
 
     def getDevice(uuid: UUID): Option[Device] = { deviceStore.get(uuid) }
 
-    def getAdminUserByEmail(email: String): Option[UserInfo] = this.synchronized { adminStoreEmail.get(email) }
+    def getAdminUserByEmail(email: String): Option[UserInfo] = this.synchronized { adminStore.values.find(_.email == email) }
 
-    def getAdminUserByUsername(username: String): Option[UserInfo] = this.synchronized(adminStoreUsername.get(username))
+    def getAdminUserByUsername(username: String): Option[UserInfo] = this.synchronized(adminStore.values.find(_.username == username))
 
-    def getDatabaseUserByEmail(email: String): Option[UserInfo] = this.synchronized(dbUserStoreEmail.get(email))
+    def getDatabaseUserByEmail(email: String): Option[UserInfo] = this.synchronized(dbUserStore.values.find(_.email == email))
 
-    def getDatabaseUserByUsername(username: String): Option[UserInfo] = this.synchronized(dbUserStoreUsername.get(username))
+    def getDatabaseUserByUsername(username: String): Option[UserInfo] = this.synchronized(dbUserStore.values.find(_.username == username))
 
-    def saveAdminUser(user: UserInfo): Option[UserInfo] = this.synchronized {
-      val oldEmail = adminStoreEmail.putIfAbsent(user.email, user)
-      if (oldEmail.isEmpty) {
-        val oldUsername = adminStoreUsername.putIfAbsent(user.username, user)
-        if (oldUsername.isEmpty) {
-          val oldID = adminStore.putIfAbsent(user.id, user)
-          if (oldID.isEmpty) {
-            None
-          } else {
-            adminStoreEmail.remove(user.email)
-            adminStoreUsername.remove(user.username)
-            oldID
-          }
-        } else {
-          adminStoreEmail.remove(user.email)
-          oldUsername
-        }
-      } else {
-        oldEmail
+    def saveAdminUser(user: UserInfo) = this.synchronized {
+      if (adminStore.values.forall(_.email != user.email) && adminStore.values.forall(_.username != user.username) && !adminStore.contains(user.id))
+        adminStore += (user.id -> user)
+      else {
+        //TODO exception should change
+        throw new IllegalArgumentException("invalid user")
       }
     }
 
-    def saveDatabaseUser(user: UserInfo): Option[UserInfo] = this.synchronized {
-      val oldEmail = dbUserStoreEmail.putIfAbsent(user.email, user)
-      if (oldEmail.isEmpty) {
-        val oldUsername = dbUserStoreUsername.putIfAbsent(user.username, user)
-        if (oldUsername.isEmpty) {
-          val oldID = dbUserStore.putIfAbsent(user.id, user)
-          if (oldID.isEmpty) {
-            None
-          } else {
-            dbUserStoreEmail.remove(user.email)
-            dbUserStoreUsername.remove(user.username)
-            oldID
-          }
-        } else {
-          dbUserStoreEmail.remove(user.email)
-          oldUsername
-        }
-      } else {
-        oldEmail
+    def saveDatabaseUser(user: UserInfo) = this.synchronized {
+      if (dbUserStore.values.forall(_.email != user.email) && dbUserStore.values.forall(_.username != user.username) && !dbUserStore.contains(user.id))
+        dbUserStore += (user.id -> user)
+      else {
+        //TODO exception should change
+        throw new IllegalArgumentException("invalid user")
+      }
+    }
+
+    def upsertDatabaseUser(user: UserInfo): Option[UserInfo] = this.synchronized {
+      if (dbUserStore.values.forall(u => u.id == user.id || u.email != user.email) && dbUserStore.values.forall(u => u.id == user.id || u.username != user.username))
+        dbUserStore.put(user.id, user)
+      else {
+        //TODO exception should change
+        throw new IllegalArgumentException("invalid user")
+      }
+    }
+
+    def upsertAdminUser(user: UserInfo): Option[UserInfo] = this.synchronized {
+      if (adminStore.values.forall(u => u.id == user.id || u.email != user.email) && adminStore.values.forall(u => u.id == user.id || u.username != user.username))
+        adminStore.put(user.id, user)
+      else {
+        //TODO exception should change
+        throw new IllegalArgumentException("invalid user")
       }
     }
   }
