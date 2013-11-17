@@ -41,6 +41,8 @@ import com.turkcellteknoloji.iotdb.domain.DatabaseUser
 import com.turkcellteknoloji.iotdb.security.OauthBearerToken
 import com.turkcellteknoloji.iotdb.security.ExpiredTokenException
 import com.turkcellteknoloji.iotdb.domain.UserInfo
+import com.turkcellteknoloji.iotdb.security.UsernamePasswordToken
+import com.turkcellteknoloji.iotdb.domain.Client
 /**
  * Created by Anil Chalil on 11/15/13.
  */
@@ -66,8 +68,11 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
     clientRepository.upsertDatabaseUser(user.copy(activated = false))
   }
 
-  def revert(user: UserInfo) {
-    clientRepository.upsertDatabaseUser(user)
+  def revert(user: Client) {
+    clientRepository.upsertDatabaseUser(user.asInstanceOf[UserInfo])
   }
-  "DatabaseUser" should behave like realm(user, userPass, AuthPrincipalType.DatabaseUser, validToken, expiredToken)
+  "DatabaseUser" should behave like client(user, userPass, AuthPrincipalType.DatabaseUser, new UsernamePasswordToken(user.username, userPass, AuthPrincipalType.DatabaseUser), new UsernamePasswordToken(user.username, "wrong pass", AuthPrincipalType.DatabaseUser), validToken, expiredToken)
+
+  "DatabaseUser" should behave like user(user, userPass, AuthPrincipalType.DatabaseUser)
+
 }

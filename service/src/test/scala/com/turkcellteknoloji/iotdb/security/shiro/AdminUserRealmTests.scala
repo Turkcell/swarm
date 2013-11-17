@@ -17,6 +17,8 @@ import com.turkcellteknoloji.iotdb.UUIDGenerator
 import org.apache.shiro.crypto.hash.Sha1Hash
 import com.turkcellteknoloji.iotdb.Config
 import scala.collection.JavaConverters._
+import com.turkcellteknoloji.iotdb.security.UsernamePasswordToken
+import com.turkcellteknoloji.iotdb.domain.Client
 
 class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
   val realm = new AdminUserRealm {
@@ -39,8 +41,9 @@ class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRea
     clientRepository.upsertAdminUser(user.copy(activated = false))
   }
 
-  def revert(user: UserInfo) {
-    clientRepository.upsertDatabaseUser(user)
+  def revert(user: Client) {
+    clientRepository.upsertAdminUser(user.asInstanceOf[UserInfo])
   }
-  "AdminUser" should behave like realm(user, userPass, AuthPrincipalType.Admin, validToken, expiredToken)
+  "AdminUser" should behave like client(user, userPass, AuthPrincipalType.Admin, new UsernamePasswordToken(user.username, userPass, AuthPrincipalType.Admin), new UsernamePasswordToken(user.username, "wrong pass", AuthPrincipalType.Admin), validToken, expiredToken)
+  "AdminUser" should behave like user(user, userPass, AuthPrincipalType.Admin)
 }
