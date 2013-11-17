@@ -3,16 +3,17 @@ package com.turkcellteknoloji.iotdb.persistence.jdbc
 import com.fasterxml.uuid.Generators
 import com.turkcellteknoloji.iotdb.domain._
 import org.junit.runner.RunWith
-import org.scalatest.{ConfigMap, BeforeAndAfterAllConfigMap, ShouldMatchers, FlatSpec}
+import org.scalatest.{ ConfigMap, BeforeAndAfterAllConfigMap, ShouldMatchers, FlatSpec }
 import org.scalatest.junit.JUnitRunner
-import scala.slick.driver.{ExtendedProfile, HsqldbDriver}
+import scala.slick.driver.{ ExtendedProfile, HsqldbDriver }
 import scala.slick.session.Database
 import com.turkcellteknoloji.iotdb.domain
+import org.apache.shiro.crypto.hash.Sha1Hash
+import com.turkcellteknoloji.iotdb.Config
 
 /**
  * Created by capacman on 10/26/13.
  */
-
 
 trait HSQLInMemoryDB {
   val profile: ExtendedProfile = HsqldbDriver
@@ -26,14 +27,12 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
 
   val uuidGenerator = Generators.timeBasedGenerator()
 
-
-  val tmpUser = AdminUser(uuidGenerator.generate(), "anil", "halil", "user1", "user@user.com", activated = true, confirmed = true, disabled = false)
-  val tmpOrganizaion = Organization(uuidGenerator.generate(), "tmp", Set(tmpUser))
-  val databases = List(domain.Database(uuidGenerator.generate(), "db1", tmpOrganizaion), domain.Database(uuidGenerator.generate(), "db2", tmpOrganizaion))
+  val tmpUser = AdminUser(uuidGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false)
+  val tmpOrganizaion = OrganizationInfo(uuidGenerator.generate(), "tmp")
+  val databases = List(domain.Database(uuidGenerator.generate(), "db1", DatabaseMetadata(0), tmpOrganizaion), domain.Database(uuidGenerator.generate(), "db2", DatabaseMetadata(0), tmpOrganizaion))
   val series = List(
     domain.Series(uuidGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1")),
-    domain.Series(uuidGenerator.generate(), "key2", Some("second series"), Set("tag1", "tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3"))
-  )
+    domain.Series(uuidGenerator.generate(), "key2", Some("second series"), Set("tag1", "tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3")))
 
   override def beforeAll(configMap: ConfigMap) {
     db withSession {
@@ -48,7 +47,6 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
       drop
     }
   }
-
 
   "schema " should " get series with id" in {
     db withSession {

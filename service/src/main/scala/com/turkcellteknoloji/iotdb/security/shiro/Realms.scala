@@ -16,8 +16,8 @@
 
 package com.turkcellteknoloji.iotdb.security.shiro
 
-import org.apache.shiro.realm.{AuthorizingRealm, Realm}
-import org.apache.shiro.authc.{AuthenticationToken, AuthenticationInfo, SimpleAuthenticationInfo, AuthenticationException}
+import org.apache.shiro.realm.{ AuthorizingRealm, Realm }
+import org.apache.shiro.authc.{ AuthenticationToken, AuthenticationInfo, SimpleAuthenticationInfo, AuthenticationException }
 import com.turkcellteknoloji.iotdb.security._
 import scala.concurrent.duration._
 import org.apache.shiro.authc.credential.CredentialsMatcher
@@ -25,7 +25,7 @@ import com.turkcellteknoloji.iotdb.domain._
 import com.turkcellteknoloji.iotdb.Config
 import scala.concurrent._
 import scala.Some
-
+import ExecutionContext.Implicits.global
 /**
  * Created by Anil Chalil on 11/14/13.
  */
@@ -33,6 +33,13 @@ class ClientIDSecretBearerCredentialsMatcher extends CredentialsMatcher {
   def doCredentialsMatch(token: AuthenticationToken, info: AuthenticationInfo): Boolean = token match {
     case t: OauthBearerToken => true
     case t: ClientIDSecretToken => t.getCredentials == info.getCredentials
+  }
+}
+
+class UsernamePasswordBearerCredentialsMatcher(val usernamePasswordMatcher: CredentialsMatcher) extends CredentialsMatcher {
+  def doCredentialsMatch(token: AuthenticationToken, info: AuthenticationInfo): Boolean = token match {
+    case t: OauthBearerToken => true
+    case t: UsernamePasswordToken => usernamePasswordMatcher.doCredentialsMatch(token, info)
   }
 }
 
@@ -74,12 +81,10 @@ trait ClientIDSecretRealmBaseComponent {
 
 }
 
-trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretBearerRealmBaseComponent with BearerRealmBaseComponent {
-  this: TokenRepositoryComponent =>
+trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretRealmBaseComponent with BearerRealmBaseComponent {
+  this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
-  trait ClientIDSecretBearerRealmBase extends AuthorizingRealm with BearerRealmBase with ClientIDSecretBearerRealmBase {
-    this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
-
+  trait ClientIDSecretBearerRealmBase extends AuthorizingRealm with BearerRealmBase with ClientIDSecretRealmBase {
 
     override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
 
@@ -89,7 +94,6 @@ trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretBearerRealmBa
           case AuthPrincipalType.Database => authorizeBearer(resourceRepository.getDatabaseInfoAsync(bearerToken.principalID), bearerToken)
           case AuthPrincipalType.Organization => authorizeBearer(resourceRepository.getOrganizationInfoAsync(bearerToken.principalID), bearerToken)
         }
-
 
       case clientIDSecret: ClientIDSecretToken =>
         clientIDSecret.authPrincipalType match {
@@ -103,10 +107,9 @@ trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretBearerRealmBa
 }
 
 trait OrganizationRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
-  this: TokenRepositoryComponent =>
+  this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
   trait OrganizationRealm extends ClientIDSecretBearerRealmBase {
-    this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Organization
       case _ => false
@@ -116,10 +119,9 @@ trait OrganizationRealmComponent extends ClientIDSecretBearerRealmBaseComponent 
 }
 
 trait DatabaseRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
-  this: TokenRepositoryComponent =>
+  this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
   trait DatabaseRealm extends ClientIDSecretBearerRealmBase {
-    this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Database
       case _ => false
@@ -129,10 +131,9 @@ trait DatabaseRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
 }
 
 trait DeviceRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
-  this: TokenRepositoryComponent =>
+  this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
   trait DeviceRealm extends ClientIDSecretBearerRealmBase {
-    this: ClientRepositoryComponent with ResourceRepositoryComponent with TokenRepositoryComponent =>
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Device
       case _ => false
@@ -146,8 +147,11 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
 
   trait UserInfoRealmBase extends AuthorizingRealm with BearerRealmBase {
 
-    def getPrincipal(principal: String): Future[Option[UserInfo]]
+    def getPrincipalByEmail(principal: String): Option[UserInfo]
 
+    def getPrincipalByUsername(principal: String): Option[UserInfo]
+
+    private def isEmail(value: String) = value.split("@").length == 2
     def checkClient(client: Client) {
       if (!client.activated)
         throw new AuthenticationException("client is not activated")
@@ -163,13 +167,11 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
         }
 
       case usernamePasswordToken: UsernamePasswordToken =>
-        val userInfoF = getPrincipal(usernamePasswordToken.getPrincipal)
-        Await.result(userInfoF.map {
-          case Some(userInfo) =>
-            checkClient(userInfo)
-            new SimpleAuthenticationInfo(if (userInfo.username == usernamePasswordToken.getPrincipal) userInfo.username else userInfo.email, userInfo.credential, Config.userInfoHash, getName)
-          case None => throw new AuthenticationException(s"userinfo not found for ${usernamePasswordToken.getPrincipal}")
-        }, 0 nanos)
+        val userInfoF = if (isEmail(usernamePasswordToken.getPrincipal)) getPrincipalByEmail(usernamePasswordToken.getPrincipal) else getPrincipalByUsername(usernamePasswordToken.getPrincipal)
+        userInfoF.map { userInfo =>
+          checkClient(userInfo)
+          new SimpleAuthenticationInfo(if (userInfo.username == usernamePasswordToken.getPrincipal) userInfo.username else userInfo.email, userInfo.credential, Config.userInfoHash, getName)
+        }.getOrElse(throw new AuthenticationException(s"userinfo not found for ${usernamePasswordToken.getPrincipal}"))
     }
   }
 
@@ -179,7 +181,6 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent =>
 
   trait AdminUserRealm extends UserInfoRealmBase {
-    this: TokenRepositoryComponent with ClientRepositoryComponent =>
     override def supports(token: AuthenticationToken) = token match {
       case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.Admin
       case _ => false
@@ -192,11 +193,12 @@ trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent =>
 
   trait DatabaseUserRealm extends UserInfoRealmBase {
-    this: TokenRepositoryComponent with ClientRepositoryComponent =>
     override def supports(token: AuthenticationToken) = token match {
       case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.DatabaseUser
       case _ => false
     }
+    def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByEmail(principal)
+    def getPrincipalByUsername(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByUsername(principal)
   }
 
 }

@@ -40,7 +40,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
   val tmpAdminUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false)
   val tmpDBUser = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false)
   "token " should " construct an OauthBearerToken" in {
-    val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), DateTime.now(), 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+    val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
     val direct = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
     val fromStr = OauthBearerToken(direct.token)
     fromStr shouldBe direct
@@ -54,7 +54,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   it should "throw ExpiredTokenException" in {
     intercept[ExpiredTokenException] {
-      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), DateTime.now(), 1, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), 0, 1, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
       val token = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
       Thread.sleep(10)
       OauthBearerToken(token.token)
@@ -77,7 +77,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   it should "throw BadTokenException when signature not match" in {
     intercept[BadTokenException] {
-      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), DateTime.now(), 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
       val a = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
       val t = a.token
       if (t.last.isDigit) {
@@ -91,8 +91,9 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   "client id " should " should construct a ClientID" in {
     val org = ClientID(OrganizationInfo(UUIDGenerator.secretGenerator.generate(), "org"))
-    val db = ClientID(DatabaseInfo(UUIDGenerator.secretGenerator.generate(), "db"))
-    val dev = ClientID(Device(UUIDGenerator.secretGenerator.generate(), "device", true, false))
+    val dbInfo = DatabaseInfo(UUIDGenerator.secretGenerator.generate(), "db")
+    val db = ClientID(dbInfo)
+    val dev = ClientID(Device(UUIDGenerator.secretGenerator.generate(), "device", dbInfo, true, false))
 
     org shouldBe ClientID(org.id)
     db shouldBe ClientID(db.id)
@@ -131,7 +132,6 @@ class TokenTests extends FlatSpec with ShouldMatchers {
       ClientID(AuthPrincipalType.DatabaseUser.base64Prefix)
     }
   }
-
 
   "client secret " should "construct a ClientSecret" in {
     val orgSecret = ClientSecret(AuthPrincipalType.Organization)

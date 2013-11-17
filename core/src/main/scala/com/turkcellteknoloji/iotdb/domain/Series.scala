@@ -61,15 +61,17 @@ trait OrganizationRef extends ResourceRef
 
 trait DatabaseRef extends ResourceRef
 
+case class DatabaseMetadata(val oauthTTL: Long)
+
 case class OrganizationInfo(id: UUID, name: String) extends OrganizationRef
 
 case class Organization(id: UUID, name: String, users: Set[AdminUser]) extends OrganizationRef
 
 case class DatabaseInfo(id: UUID, name: String) extends DatabaseRef
 
-case class Database(id: UUID, name: String, owner: Organization) extends DatabaseRef
+case class Database(id: UUID, name: String, metadata: DatabaseMetadata, owner: OrganizationInfo) extends DatabaseRef
 
-case class Device(id: UUID, deviceID: String, activated: Boolean, disabled: Boolean) extends Client {
+case class Device(id: UUID, deviceID: String, databaseInfo: DatabaseInfo, activated: Boolean, disabled: Boolean) extends Client {
   def confirmed = true
 }
 
@@ -78,11 +80,9 @@ trait ResourceRepository {
 
   def getDatabaseInfoAsync(uuid: UUID): Future[Option[DatabaseInfo]]
 
-  def createOrganization(name: String, users: Set[AdminUser]): Organization
+  def saveOrganization(org: Organization): Option[Organization]
 
-  def updateOrganization(org: Organization)
-
-  def getDevice(id: UUID): Option[Device]
+  def updateOrganization(org: Organization): Option[Organization]
 
   def getOrganizationInfo(id: UUID): Option[OrganizationInfo]
 
@@ -91,6 +91,8 @@ trait ResourceRepository {
   def getDatabaseInfo(id: UUID): Option[DatabaseInfo]
 
   def getDatabase(id: UUID): Option[Database]
+
+  def getDatabaseMetadata(id: UUID): Option[DatabaseMetadata]
 }
 
 trait ResourceRepositoryComponent {
@@ -99,6 +101,14 @@ trait ResourceRepositoryComponent {
 
 trait ClientRepository {
   def getAdminUser(uuid: UUID): Option[UserInfo]
+
+  def getAdminUserByEmail(email: String): Option[UserInfo]
+
+  def getAdminUserByUsername(username: String): Option[UserInfo]
+
+  def getDatabaseUserByEmail(email: String): Option[UserInfo]
+
+  def getDatabaseUserByUsername(username: String): Option[UserInfo]
 
   def getDatabaseUser(uuid: UUID): Option[UserInfo]
 
@@ -109,11 +119,14 @@ trait ClientRepository {
   def getDatabaseUserAsync(uuid: UUID): Future[Option[UserInfo]]
 
   def getDeviceAsync(uuid: UUID): Future[Option[Device]]
+
+  def saveAdminUser(user: UserInfo): Option[UserInfo]
+  
+  def saveDatabaseUser(user: UserInfo): Option[UserInfo]
 }
 
 trait ClientRepositoryComponent {
   val clientRepository: ClientRepository
-
 
 }
 

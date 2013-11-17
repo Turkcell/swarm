@@ -22,8 +22,8 @@ import com.turkcellteknoloji.iotdb.domain.DatabaseInfo
 import com.turkcellteknoloji.iotdb.domain.Device
 import java.util.UUID
 import scala.concurrent._
-import com.turkcellteknoloji.iotdb.security.{TokenRepositoryComponent, ClientID, OauthBearerToken}
-
+import com.turkcellteknoloji.iotdb.security.{ TokenRepositoryComponent, ClientID, OauthBearerToken }
+import ExecutionContext.Implicits.global
 /**
  * Created by Anil Chalil on 11/1/13.
  */
@@ -57,8 +57,6 @@ trait ManagementServiceComponent {
     def getDatabaseInfoAsync(uuid: UUID) = future {
       getDatabaseInfo(uuid)
     }
-
-    def getDevice(deviceID: UUID): Option[Device] = resourceRepository.getDevice(deviceID)
 
   }
 
