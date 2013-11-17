@@ -50,7 +50,7 @@ trait BearerRealmBaseComponent {
     protected def authorizeBearer[T <: IDEntity](idEntity: Future[Option[T]], bearerToken: OauthBearerToken, check: T => Unit = null) = {
       //TODO check tokenInfo since it can return none(means somebody know salt value or cassandra has problem)
       val tokenInfo = tokenRepository.getTokenInfo(bearerToken)
-      if (bearerToken.authPrincipalType != tokenInfo.principal.`type` || bearerToken.principalID != tokenInfo.principal.uuid)
+      if (bearerToken.authPrincipalType != tokenInfo.principal.`type` || bearerToken.principalID != tokenInfo.principal.uuid || bearerToken.expires != tokenInfo.expiration)
         throw BadTokenException("token is forged")
       Await.result(idEntity.map {
         case Some(entity) =>
@@ -195,6 +195,7 @@ trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
   trait DatabaseUserRealm extends UserInfoRealmBase {
     override def supports(token: AuthenticationToken) = token match {
       case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.DatabaseUser
+      case t: OauthBearerToken => t.authPrincipalType == AuthPrincipalType.DatabaseUser
       case _ => false
     }
     def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByEmail(principal)

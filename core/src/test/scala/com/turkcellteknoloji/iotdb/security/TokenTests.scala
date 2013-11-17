@@ -21,15 +21,10 @@ import org.scalatest.junit.JUnitRunner
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.ShouldMatchers
-import com.turkcellteknoloji.iotdb.UUIDGenerator
 import org.joda.time.DateTime
 import java.nio.BufferUnderflowException
-import com.turkcellteknoloji.iotdb.domain._
+import domain._
 import java.lang.IllegalArgumentException
-import com.turkcellteknoloji.iotdb.domain.OrganizationInfo
-import com.turkcellteknoloji.iotdb.domain.DatabaseInfo
-import com.turkcellteknoloji.iotdb.domain.AdminUser
-import com.turkcellteknoloji.iotdb.domain.Device
 import org.apache.shiro.crypto.hash.Sha1Hash
 
 /**
@@ -40,8 +35,8 @@ class TokenTests extends FlatSpec with ShouldMatchers {
   val tmpAdminUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false)
   val tmpDBUser = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false)
   "token " should " construct an OauthBearerToken" in {
-    val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
-    val direct = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
+    val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, TokenCategory.Access, DateTime.now(), DateTime.now(), 0, 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+    val direct = OauthBearerToken(tokenInfo)
     val fromStr = OauthBearerToken(direct.token)
     fromStr shouldBe direct
   }
@@ -54,8 +49,8 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   it should "throw ExpiredTokenException" in {
     intercept[ExpiredTokenException] {
-      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), 0, 1, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
-      val token = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
+      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, TokenCategory.Access, DateTime.now(), DateTime.now(), 0, 1, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+      val token = OauthBearerToken(tokenInfo)
       Thread.sleep(10)
       OauthBearerToken(token.token)
     }
@@ -77,8 +72,8 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   it should "throw BadTokenException when signature not match" in {
     intercept[BadTokenException] {
-      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, DateTime.now(), DateTime.now(), 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
-      val a = OauthBearerToken(tokenInfo, TokenCategory.Access, UUIDGenerator.secretGenerator.generate())
+      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, TokenCategory.Access, DateTime.now(), DateTime.now(), 0, 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+      val a = OauthBearerToken(tokenInfo)
       val t = a.token
       if (t.last.isDigit) {
         OauthBearerToken(t.take(t.length - 1) + (t.last.asDigit - 1).toString)

@@ -18,12 +18,11 @@ package com.turkcellteknoloji.iotdb
 package security
 
 import org.apache.shiro.authc.AuthenticationToken
-import com.turkcellteknoloji.iotdb.security.AuthPrincipalType.{AuthPrincipalTypeValue, AuthPrincipalType}
+import AuthPrincipalType.{AuthPrincipalTypeValue, AuthPrincipalType}
 import java.util.UUID
 import java.nio.{BufferUnderflowException, ByteBuffer}
-import com.turkcellteknoloji.iotdb.Config
-import com.turkcellteknoloji.iotdb.security.TokenCategory.TokenCategory
-import com.turkcellteknoloji.iotdb.domain._
+import TokenCategory.TokenCategory
+import domain._
 import org.joda.time.DateTime
 
 /**
@@ -187,21 +186,21 @@ object OauthBearerToken {
 
   private[this] def sha(tokenCategory: TokenCategory, principalType: AuthPrincipalType, expires: Long, uuid: UUID, principalUUID: UUID) = (tokenCategory.prefix + principalType.prefix + uuid + Config.tokenSecretSalt + expires + principalUUID).sha
 
-  def apply(tokenInfo: TokenInfo, tokenCategory: TokenCategory, uuid: UUID) = {
+  def apply(tokenInfo: TokenInfo) = {
     var l = 52
-    if (tokenCategory.expires) {
+    if (tokenInfo.tokenCategory.expires) {
       l += 8
     }
     val bytes = ByteBuffer.allocate(l)
-    bytes.put(uuid.asByteArray)
+    bytes.put(tokenInfo.uuid.asByteArray)
     var expires = Long.MaxValue
-    if (tokenCategory.expires) {
-      expires = if (tokenInfo.duration > 0) uuid.timeStampInMillis + tokenInfo.duration else uuid.timeStampInMillis + tokenCategory.expiration
+    if (tokenInfo.tokenCategory.expires) {
+      expires = tokenInfo.expiration
       bytes.putLong(expires)
     }
     bytes.put(tokenInfo.principal.uuid.asByteArray)
-    bytes.put(sha(tokenCategory, tokenInfo.principal.`type`, expires, uuid, tokenInfo.principal.uuid))
-    new OauthBearerToken(tokenCategory.base64Prefix + tokenInfo.principal.`type`.base64Prefix + bytes.base64URLSafeString, tokenInfo.principal.`type`, tokenCategory, uuid, tokenInfo.principal.uuid, expires)
+    bytes.put(sha(tokenInfo.tokenCategory, tokenInfo.principal.`type`, expires,tokenInfo.uuid, tokenInfo.principal.uuid))
+    new OauthBearerToken(tokenInfo.tokenCategory.base64Prefix + tokenInfo.principal.`type`.base64Prefix + bytes.base64URLSafeString, tokenInfo.principal.`type`, tokenInfo.tokenCategory, tokenInfo.uuid, tokenInfo.principal.uuid, expires)
   }
 
   def apply(token: String) = {

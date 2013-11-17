@@ -33,12 +33,18 @@ import com.turkcellteknoloji.iotdb.security.AuthPrincipalType
 import com.turkcellteknoloji.iotdb.domain.DatabaseUser
 import com.turkcellteknoloji.iotdb.{ UUIDGenerator, Config }
 import org.apache.shiro.crypto.hash.Sha1Hash
+import org.apache.shiro.authc.AuthenticationException
+import com.turkcellteknoloji.iotdb.security.TokenCategory
+import com.turkcellteknoloji.iotdb.security.TokenType
+import com.turkcellteknoloji.iotdb.security.AuthPrincipalInfo
+import com.turkcellteknoloji.iotdb.domain.DatabaseUser
+import com.turkcellteknoloji.iotdb.security.OauthBearerToken
+import com.turkcellteknoloji.iotdb.security.ExpiredTokenException
 /**
  * Created by Anil Chalil on 11/15/13.
  */
 @RunWith(classOf[JUnitRunner])
-class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseUserRealmComponent with InMemoryComponents {
-
+class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseUserRealmComponent with InMemoryComponents with RealmTestsBase {
   val realm = new DatabaseUserRealm {
     def doGetAuthorizationInfo(principals: PrincipalCollection) = null
   }
@@ -47,8 +53,39 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
-  "config" should "print hello" in {
-    clientRepository.saveDatabaseUser(DatabaseUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", new Sha1Hash("test", Config.userInfoHash).toHex(), true, true, false))
-    SecurityUtils.getSubject.login(new UsernamePasswordToken("test", "test", AuthPrincipalType.DatabaseUser))
+  val user = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", new Sha1Hash("test", Config.userInfoHash).toHex(), true, true, false)
+  val userPass = "test"
+  clientRepository.saveDatabaseUser(user)
+
+  "user" should "authenticate with username password" in {
+    SecurityUtils.getSubject().isAuthenticated() should be(false)
+    SecurityUtils.getSubject.login(new UsernamePasswordToken(user.username, userPass, AuthPrincipalType.DatabaseUser))
+    SecurityUtils.getSubject().getPrincipal() should be(user.username)
+  }
+
+  it should "authenticate with email and password" in {
+    SecurityUtils.getSubject().isAuthenticated() should be(false)
+    SecurityUtils.getSubject.login(new UsernamePasswordToken(user.email, userPass, AuthPrincipalType.DatabaseUser))
+    SecurityUtils.getSubject().getPrincipal() should be(user.email)
+  }
+  it should "throw authentication exception with wrong password" in {
+    intercept[AuthenticationException] {
+      SecurityUtils.getSubject().isAuthenticated() should be(false)
+      SecurityUtils.getSubject.login(new UsernamePasswordToken(user.username, "wrongpass", AuthPrincipalType.DatabaseUser))
+    }
+  }
+  it should "authenticate with bearer token" in {
+    val token = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 0, 0)
+    SecurityUtils.getSubject().isAuthenticated() should be(false)
+    SecurityUtils.getSubject().login(OauthBearerToken(token.token))
+    SecurityUtils.getSubject().getPrincipal().asInstanceOf[DatabaseUser].id shouldBe user.id
+  }
+  it should "fail with expired bearer token" in {
+    intercept[ExpiredTokenException] {
+      val token = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 100, 0)
+      Thread.sleep(110)
+      SecurityUtils.getSubject().isAuthenticated() should be(false)
+      SecurityUtils.getSubject().login(OauthBearerToken(token.token))
+    }
   }
 }
