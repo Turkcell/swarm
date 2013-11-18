@@ -36,6 +36,8 @@ trait TokenRepositoryComponent {
   trait TokenRepository {
     def getClientSecret(clientID: ClientID): ClientSecret
 
+    def saveClientSecret(clientID: ClientID, secret: ClientSecret)
+
     def getTokenInfo(token: OauthBearerToken): TokenInfo
 
     protected def putTokenInfo(tokenInfo: TokenInfo)

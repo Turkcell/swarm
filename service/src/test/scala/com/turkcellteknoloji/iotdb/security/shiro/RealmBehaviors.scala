@@ -11,6 +11,8 @@ import com.turkcellteknoloji.iotdb.security.ExpiredTokenException
 import com.turkcellteknoloji.iotdb.security.OauthBearerToken
 import com.turkcellteknoloji.iotdb.domain.Client
 import org.apache.shiro.authc.AuthenticationToken
+import com.turkcellteknoloji.iotdb.domain.IDEntity
+import com.turkcellteknoloji.iotdb.security.ClientID
 
 trait ClientRealmBehaviors {
   this: FlatSpec with ShouldMatchers with InMemoryComponents =>
@@ -36,7 +38,10 @@ trait ClientRealmBehaviors {
     it should "authenticate with valid token" in {
       SecurityUtils.getSubject().isAuthenticated() should be(false)
       SecurityUtils.getSubject.login(validAuthToken)
-      SecurityUtils.getSubject().getPrincipal() should be(validAuthToken.getPrincipal())
+      SecurityUtils.getSubject().getPrincipal() match {
+        case e: IDEntity => e.id should be(validAuthToken.getPrincipal().asInstanceOf[ClientID].principalID)
+        case _ => SecurityUtils.getSubject().getPrincipal() should be(validAuthToken.getPrincipal())
+      }
     }
 
     it should "throw authentication exception with wrong credentials" in {

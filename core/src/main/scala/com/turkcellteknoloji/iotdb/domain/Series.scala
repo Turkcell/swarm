@@ -18,6 +18,7 @@ package com.turkcellteknoloji.iotdb.domain
 
 import java.util.UUID
 import scala.concurrent._
+import com.turkcellteknoloji.iotdb.IOTDBException
 
 /**
  * Created by Anil Chalil on 10/22/13.
@@ -80,9 +81,13 @@ trait ResourceRepository {
 
   def getDatabaseInfoAsync(uuid: UUID): Future[Option[DatabaseInfo]]
 
-  def saveOrganization(org: Organization): Option[Organization]
+  def saveOrganization(org: Organization): Unit
 
-  def updateOrganization(org: Organization): Option[Organization]
+  def upsertOrganization(org: Organization): Option[Organization]
+
+  def saveDatabase(db: Database): Unit
+
+  def upsertDatabase(db: Database): Option[Database]
 
   def getOrganizationInfo(id: UUID): Option[OrganizationInfo]
 
@@ -98,7 +103,11 @@ trait ResourceRepository {
 trait ResourceRepositoryComponent {
   val resourceRepository: ResourceRepository
 }
+trait DublicateIDEntity extends IOTDBException
 
+object DublicateIDEntity {
+  def apply(message: String) = new RuntimeException(message) with DublicateIDEntity
+}
 trait ClientRepository {
   def getAdminUser(uuid: UUID): Option[UserInfo]
 
@@ -120,13 +129,17 @@ trait ClientRepository {
 
   def getDeviceAsync(uuid: UUID): Future[Option[Device]]
 
-  def saveAdminUser(user: UserInfo):Unit
+  def saveAdminUser(user: UserInfo): Unit
 
-  def saveDatabaseUser(user: UserInfo):Unit
+  def saveDatabaseUser(user: UserInfo): Unit
+
+  def saveDevice(device: Device): Unit
 
   def upsertAdminUser(user: UserInfo): Option[UserInfo]
-  
+
   def upsertDatabaseUser(user: UserInfo): Option[UserInfo]
+
+  def upsertDevice(device: Device): Option[Device]
 }
 
 trait ClientRepositoryComponent {

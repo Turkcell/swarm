@@ -150,7 +150,7 @@ object ClientID {
   }
 
   def apply(ref: IDEntity) = ref match {
-    case o: OrganizationInfo => new ClientID(AuthPrincipalType.Organization.base64Prefix + o.id.base64, o.id, AuthPrincipalType.Organization)
+    case o: OrganizationRef => new ClientID(AuthPrincipalType.Organization.base64Prefix + o.id.base64, o.id, AuthPrincipalType.Organization)
     case d: DatabaseRef => new ClientID(AuthPrincipalType.Database.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Database)
     case d: Device => new ClientID(AuthPrincipalType.Device.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Device)
     case _ => throw new IllegalArgumentException(s"could not generate clientID for $ref")

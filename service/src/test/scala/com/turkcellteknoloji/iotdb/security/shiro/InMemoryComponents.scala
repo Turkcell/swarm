@@ -20,19 +20,24 @@ import com.turkcellteknoloji.iotdb.security.OauthBearerToken
 import scala.concurrent._
 import scala.collection.mutable.Map
 import scala.collection.JavaConverters._
-
 import scala.concurrent.ExecutionContext.Implicits.global
+import com.turkcellteknoloji.iotdb.domain.Organization
+import com.turkcellteknoloji.iotdb.domain.DublicateIDEntity
+import com.turkcellteknoloji.iotdb.security.TokenInfo
 
 trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent {
   val tokenRepository = new TokenRepository {
-    val tokenStore = (new java.util.concurrent.ConcurrentHashMap[UUID, TokenInfo]).asScala
-    val secretStore = (new java.util.concurrent.ConcurrentHashMap[String, String]).asScala
+    val tokenStore = Map[UUID, TokenInfo]()
+    val secretStore = Map[UUID, String]()
 
-    def getTokenInfo(token: OauthBearerToken): TokenInfo = tokenStore(token.tokenID)
+    def getTokenInfo(token: OauthBearerToken): TokenInfo = this.synchronized(tokenStore(token.tokenID))
 
-    def getClientSecret(clientID: ClientID): ClientSecret = ClientSecret(secretStore(clientID.id))
-    protected def putTokenInfo(tokenInfo: TokenInfo) {
+    def getClientSecret(clientID: ClientID): ClientSecret = this.synchronized(ClientSecret(secretStore(clientID.principalID)))
+    protected def putTokenInfo(tokenInfo: TokenInfo) = this.synchronized {
       tokenStore += (tokenInfo.uuid -> tokenInfo)
+    }
+    def saveClientSecret(clientID: ClientID, secret: ClientSecret) = this.synchronized {
+      secretStore += (clientID.principalID -> secret.secret)
     }
   }
 
@@ -64,8 +69,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (adminStore.values.forall(_.email != user.email) && adminStore.values.forall(_.username != user.username) && !adminStore.contains(user.id))
         adminStore += (user.id -> user)
       else {
-        //TODO exception should change
-        throw new IllegalArgumentException("invalid user")
+        throw DublicateIDEntity("invalid user")
       }
     }
 
@@ -73,8 +77,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (dbUserStore.values.forall(_.email != user.email) && dbUserStore.values.forall(_.username != user.username) && !dbUserStore.contains(user.id))
         dbUserStore += (user.id -> user)
       else {
-        //TODO exception should change
-        throw new IllegalArgumentException("invalid user")
+        throw DublicateIDEntity("invalid user")
       }
     }
 
@@ -82,8 +85,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (dbUserStore.values.forall(u => u.id == user.id || u.email != user.email) && dbUserStore.values.forall(u => u.id == user.id || u.username != user.username))
         dbUserStore.put(user.id, user)
       else {
-        //TODO exception should change
-        throw new IllegalArgumentException("invalid user")
+        throw DublicateIDEntity("invalid user")
       }
     }
 
@@ -91,30 +93,63 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (adminStore.values.forall(u => u.id == user.id || u.email != user.email) && adminStore.values.forall(u => u.id == user.id || u.username != user.username))
         adminStore.put(user.id, user)
       else {
-        //TODO exception should change
-        throw new IllegalArgumentException("invalid user")
+        throw DublicateIDEntity("invalid user")
       }
+    }
+
+    def upsertDevice(device: Device): Option[Device] = this.synchronized {
+      if (deviceStore.values.forall(d => d.deviceID != device.deviceID || d.id == device.id))
+        deviceStore.put(device.id, device)
+      else
+        throw DublicateIDEntity("invalid device")
+    }
+
+    def saveDevice(device: Device) = this.synchronized {
+      if (deviceStore.values.forall(_.deviceID != device.deviceID) && !deviceStore.contains(device.id))
+        deviceStore += (device.id -> device)
+      else throw DublicateIDEntity("invalid device")
     }
   }
 
   val resourceRepository = new ResourceRepository {
-    val dbStore = (new java.util.concurrent.ConcurrentHashMap[UUID, Database]).asScala
-    val orgStore = (new java.util.concurrent.ConcurrentHashMap[UUID, Organization]).asScala
+    val dbStore = Map[UUID, Database]()
+    val orgStore = Map[UUID, Organization]()
 
-    def saveOrganization(org: Organization): Option[Organization] = orgStore.putIfAbsent(org.id, org)
-    def getDatabase(id: UUID): Option[Database] = {
-      val db = dbStore(id)
-      if (db == null) None else Some(db)
+    def saveOrganization(org: Organization) = this.synchronized {
+      if (orgStore.values.forall(_.name != org.name) && !orgStore.contains(org.id))
+        orgStore += (org.id -> org)
+      else throw DublicateIDEntity("invalid org")
     }
+    def getDatabase(id: UUID): Option[Database] = this.synchronized(dbStore.get(id))
+
     def getDatabaseInfo(id: UUID): Option[DatabaseInfo] = getDatabase(id).map(db => DatabaseInfo(db.id, db.name))
+
     def getDatabaseInfoAsync(uuid: UUID): Future[Option[DatabaseInfo]] = future { getDatabaseInfo(uuid) }
+
     def getDatabaseMetadata(id: UUID): Option[DatabaseMetadata] = getDatabase(id).map(db => db.metadata)
-    def getOrganization(id: UUID): Option[Organization] = {
-      val org = orgStore(id)
-      if (org == null) None else Some(org)
-    }
+
+    def getOrganization(id: UUID): Option[Organization] = this.synchronized(orgStore.get(id))
+
     def getOrganizationInfo(id: UUID): Option[OrganizationInfo] = getOrganization(id).map(org => OrganizationInfo(org.id, org.name))
+
     def getOrganizationInfoAsync(uuid: UUID): Future[Option[OrganizationInfo]] = future { getOrganizationInfo(uuid) }
-    def updateOrganization(org: Organization): Option[Organization] = orgStore replace (org.id, org)
+
+    def upsertOrganization(org: Organization): Option[Organization] = this.synchronized {
+      if (orgStore.values.forall(o => o.name != org.name || o.id == org.id))
+        orgStore.put(org.id, org)
+      else
+        throw DublicateIDEntity("invalid org")
+    }
+    def saveDatabase(db: Database): Unit = this.synchronized {
+      if (dbStore.values.forall(_.name != db.name) && !dbStore.contains(db.id))
+        dbStore += (db.id -> db)
+      else throw DublicateIDEntity("invalid database")
+    }
+    def upsertDatabase(db: Database): Option[Database] = this.synchronized {
+      if (dbStore.values.forall(d => d.name != db.name || d.id == db.id))
+        dbStore.put(db.id, db)
+      else throw DublicateIDEntity("invalid database")
+    }
+
   }
 }

@@ -58,7 +58,7 @@ trait BearerRealmBaseComponent {
             check(entity)
           new SimpleAuthenticationInfo(entity, tokenInfo, getName)
         case None => throw new AuthenticationException(s"${idEntity.getClass().getName} not found for ${bearerToken.principalID}")
-      }, 0 nanos)
+      }, Duration.Inf)
     }
   }
 
@@ -68,12 +68,15 @@ trait ClientIDSecretRealmBaseComponent {
   this: TokenRepositoryComponent =>
 
   trait ClientIDSecretRealmBase extends Realm {
-    protected def authorizeClientIDSecret(idEntity: Future[Option[IDEntity]], clientIDSecret: ClientIDSecretToken) = {
-      val secret = tokenRepository.getClientSecret(clientIDSecret.principalID.asInstanceOf[ClientID])
+    protected def authorizeClientIDSecret[T <: IDEntity](idEntity: Future[Option[T]], clientIDSecret: ClientIDSecretToken, check: T => Unit = null) = {
+      val secret = tokenRepository.getClientSecret(clientIDSecret.getPrincipal)
       if (clientIDSecret.authPrincipalType != secret.authPrincipalType)
         throw BadTokenException("token is forged")
       Await.result(idEntity.map {
-        case Some(entity) => new SimpleAuthenticationInfo(entity, secret, getName)
+        case Some(entity) =>
+          if (check != null)
+            check(entity)
+          new SimpleAuthenticationInfo(entity, secret, getName)
         case None => throw new AuthenticationException(s"${idEntity.getClass().getName} not found for ${clientIDSecret.principalID}")
       }, 0 nanos)
     }
@@ -130,16 +133,33 @@ trait DatabaseRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
 
 }
 
-trait DeviceRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
+trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
-  trait DeviceRealm extends ClientIDSecretBearerRealmBase {
+  trait DeviceRealm extends AuthorizingRealm with BearerRealmBase with ClientIDSecretRealmBase {
+    def checkClient(client: Client) {
+      if (!client.activated)
+        throw new AuthenticationException("client is not activated")
+      if (client.disabled)
+        throw new AuthenticationException("client is disabled")
+    }
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Device
       case _ => false
     }
-  }
+    override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
 
+      case bearerToken: OauthBearerToken =>
+        bearerToken.authPrincipalType match {
+          case AuthPrincipalType.Device => authorizeBearer(clientRepository.getDeviceAsync(bearerToken.principalID), bearerToken, checkClient)
+        }
+
+      case clientIDSecret: ClientIDSecretToken =>
+        clientIDSecret.authPrincipalType match {
+          case AuthPrincipalType.Device => authorizeClientIDSecret(clientRepository.getDeviceAsync(clientIDSecret.principalID), clientIDSecret, checkClient)
+        }
+    }
+  }
 }
 
 trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
