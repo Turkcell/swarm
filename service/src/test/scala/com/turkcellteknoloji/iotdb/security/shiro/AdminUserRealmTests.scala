@@ -60,6 +60,7 @@ class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRea
   def revert(user: Client) {
     clientRepository.upsertAdminUser(user.asInstanceOf[UserInfo])
   }
-  "AdminUser" should behave like client(user, userPass, AuthPrincipalType.Admin, new UsernamePasswordToken(user.username, userPass, AuthPrincipalType.Admin), new UsernamePasswordToken(user.username, "wrong pass", AuthPrincipalType.Admin),new UsernamePasswordToken("wrong", "wrong", AuthPrincipalType.Admin), validToken, expiredToken)
+  "AdminUser" should behave like basic(new UsernamePasswordToken(user.username, userPass, AuthPrincipalType.Admin), new UsernamePasswordToken(user.username, "wrong pass", AuthPrincipalType.Admin),new UsernamePasswordToken("wrong", "wrong", AuthPrincipalType.Admin), validToken, expiredToken)
+  "AdminUser" should behave like client(user,validToken)
   "AdminUser" should behave like user(user, userPass, AuthPrincipalType.Admin)
 }

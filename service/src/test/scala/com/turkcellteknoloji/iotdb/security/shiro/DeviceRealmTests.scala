@@ -67,9 +67,11 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
   tokenRepository.saveClientSecret(ClientID(device), secret)
   val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Device, device.id), 0, 0)
   val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Device, device.id), 100, 0)
+
   def disable {
     clientRepository.upsertDevice(device.copy(disabled = true))
   }
+
   def passivate {
     clientRepository.upsertDevice(device.copy(activated = false))
   }
@@ -78,5 +80,7 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
     clientRepository.upsertDevice(device.asInstanceOf[Device])
   }
 
-  "Device" should behave like client(device, userPass, AuthPrincipalType.DatabaseUser, ClientIDSecretToken(ClientID(device), secret), ClientIDSecretToken(ClientID(device), ClientSecret(AuthPrincipalType.Device)),ClientIDSecretToken(ClientID(deviceNoneExistent), ClientSecret(AuthPrincipalType.Device)), validToken, expiredToken)
+  "Device" should behave like basic(ClientIDSecretToken(ClientID(device), secret), ClientIDSecretToken(ClientID(device), ClientSecret(AuthPrincipalType.Device)), ClientIDSecretToken(ClientID(deviceNoneExistent), ClientSecret(AuthPrincipalType.Device)), validToken, expiredToken)
+  "Device" should behave like client(device, validToken)
+
 }

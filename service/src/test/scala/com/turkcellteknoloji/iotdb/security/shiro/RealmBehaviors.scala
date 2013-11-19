@@ -18,7 +18,7 @@ package com.turkcellteknoloji.iotdb.security.shiro
 
 import org.scalatest.FlatSpec
 import org.apache.shiro.SecurityUtils
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.ShouldMatchers
 import com.turkcellteknoloji.iotdb.security.UsernamePasswordToken
 import com.turkcellteknoloji.iotdb.domain.UserInfo
 import com.turkcellteknoloji.iotdb.security.AuthPrincipalType.AuthPrincipalType
@@ -30,29 +30,11 @@ import org.apache.shiro.authc.AuthenticationToken
 import com.turkcellteknoloji.iotdb.domain.IDEntity
 import com.turkcellteknoloji.iotdb.security.ClientID
 
-trait ClientRealmBehaviors {
+
+trait BasicRealmBehaviors {
   this: FlatSpec with ShouldMatchers with InMemoryComponents =>
 
-  def disable
-
-  def passivate
-
-  def revert(user: Client)
-
-  def client(client: Client, userPass: String, principalType: AuthPrincipalType, validAuthToken: AuthenticationToken, invalidAuthToken: AuthenticationToken, nonExistenceAuthToken: AuthenticationToken, validToken: OauthBearerToken, expiredToken: OauthBearerToken) {
-    def withDisabledUser(testCode: => Any) {
-      try {
-        disable
-        testCode
-      } finally revert(client)
-    }
-
-    def withNotActivatedUser(testCode: => Any) {
-      try {
-        passivate
-        testCode
-      } finally revert(client)
-    }
+  def basic(validAuthToken: AuthenticationToken, invalidAuthToken: AuthenticationToken, nonExistenceAuthToken: AuthenticationToken, validToken: OauthBearerToken, expiredToken: OauthBearerToken) {
     it should "authenticate with valid token" in {
       SecurityUtils.getSubject().isAuthenticated() should be(false)
       SecurityUtils.getSubject.login(validAuthToken)
@@ -78,7 +60,7 @@ trait ClientRealmBehaviors {
     it should "authenticate with bearer token" in {
       SecurityUtils.getSubject().isAuthenticated() should be(false)
       SecurityUtils.getSubject().login(OauthBearerToken(validToken.token))
-      SecurityUtils.getSubject().getPrincipal().asInstanceOf[Client].id shouldBe validToken.principalID
+      SecurityUtils.getSubject().getPrincipal().asInstanceOf[IDEntity].id shouldBe validToken.principalID
     }
     it should "fail with expired bearer token" in {
       intercept[ExpiredTokenException] {
@@ -86,6 +68,32 @@ trait ClientRealmBehaviors {
         SecurityUtils.getSubject().isAuthenticated() should be(false)
         SecurityUtils.getSubject().login(OauthBearerToken(expiredToken.token))
       }
+    }
+  }
+}
+
+trait ClientRealmBehaviors extends BasicRealmBehaviors {
+  this: FlatSpec with ShouldMatchers with InMemoryComponents =>
+
+  def disable
+
+  def passivate
+
+  def revert(user: Client)
+
+  def client(client: Client, validToken: OauthBearerToken) {
+    def withDisabledUser(testCode: => Any) {
+      try {
+        disable
+        testCode
+      } finally revert(client)
+    }
+
+    def withNotActivatedUser(testCode: => Any) {
+      try {
+        passivate
+        testCode
+      } finally revert(client)
     }
 
     it should "fail with disabled client" in withDisabledUser {
