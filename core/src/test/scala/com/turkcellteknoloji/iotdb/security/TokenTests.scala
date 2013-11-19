@@ -26,6 +26,13 @@ import java.nio.BufferUnderflowException
 import domain._
 import java.lang.IllegalArgumentException
 import org.apache.shiro.crypto.hash.Sha1Hash
+import com.turkcellteknoloji.iotdb.security.shiro._
+import com.turkcellteknoloji.iotdb.domain.OrganizationInfo
+import com.turkcellteknoloji.iotdb.domain.DatabaseUser
+import com.turkcellteknoloji.iotdb.domain.DatabaseInfo
+import com.turkcellteknoloji.iotdb.domain.AdminUser
+import com.turkcellteknoloji.iotdb.security.shiro.AuthPrincipalInfo
+import com.turkcellteknoloji.iotdb.domain.Device
 
 /**
  * Created by Anil Chalil on 11/12/13.

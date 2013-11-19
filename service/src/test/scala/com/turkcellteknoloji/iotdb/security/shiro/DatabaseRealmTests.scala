@@ -30,7 +30,6 @@ import com.turkcellteknoloji.iotdb.domain.OrganizationInfo
 import com.turkcellteknoloji.iotdb.domain.Database
 import com.turkcellteknoloji.iotdb.domain.Organization
 import com.turkcellteknoloji.iotdb.domain.AdminUser
-import com.turkcellteknoloji.iotdb.security.AuthPrincipalInfo
 import com.turkcellteknoloji.iotdb.domain.DatabaseMetadata
 
 /**

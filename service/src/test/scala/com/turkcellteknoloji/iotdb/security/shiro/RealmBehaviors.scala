@@ -19,16 +19,13 @@ package com.turkcellteknoloji.iotdb.security.shiro
 import org.scalatest.FlatSpec
 import org.apache.shiro.SecurityUtils
 import org.scalatest.ShouldMatchers
-import com.turkcellteknoloji.iotdb.security.UsernamePasswordToken
 import com.turkcellteknoloji.iotdb.domain.UserInfo
 import com.turkcellteknoloji.iotdb.security.AuthPrincipalType.AuthPrincipalType
 import org.apache.shiro.authc.AuthenticationException
 import com.turkcellteknoloji.iotdb.security.ExpiredTokenException
-import com.turkcellteknoloji.iotdb.security.OauthBearerToken
 import com.turkcellteknoloji.iotdb.domain.Client
 import org.apache.shiro.authc.AuthenticationToken
 import com.turkcellteknoloji.iotdb.domain.IDEntity
-import com.turkcellteknoloji.iotdb.security.ClientID
 
 
 trait BasicRealmBehaviors {

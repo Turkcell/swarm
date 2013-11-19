@@ -24,9 +24,7 @@ import org.apache.shiro.authc.credential.CredentialsMatcher
 import com.turkcellteknoloji.iotdb.domain._
 import com.turkcellteknoloji.iotdb.Config
 import scala.concurrent._
-import scala.Some
 import ExecutionContext.Implicits.global
-import com.turkcellteknoloji.iotdb.security.UsernamePasswordToken
 import scala.Some
 
 /**

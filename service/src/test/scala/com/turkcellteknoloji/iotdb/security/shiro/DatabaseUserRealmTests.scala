@@ -22,27 +22,18 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.ShouldMatchers
 import org.scalatest.junit.JUnitRunner
-import java.util.ArrayList
 import scala.collection.JavaConverters._
 import org.apache.shiro.authc.credential.Sha1CredentialsMatcher
 import org.apache.shiro.subject.PrincipalCollection
 import org.apache.shiro.SecurityUtils
-import org.apache.shiro.crypto.hash.Sha1Hash
-import com.turkcellteknoloji.iotdb.security.UsernamePasswordToken
 import com.turkcellteknoloji.iotdb.security.AuthPrincipalType
-import com.turkcellteknoloji.iotdb.domain.DatabaseUser
-import com.turkcellteknoloji.iotdb.{ UUIDGenerator, Config }
+import com.turkcellteknoloji.iotdb.{UUIDGenerator, Config}
 import org.apache.shiro.crypto.hash.Sha1Hash
-import org.apache.shiro.authc.AuthenticationException
 import com.turkcellteknoloji.iotdb.security.TokenCategory
-import com.turkcellteknoloji.iotdb.security.TokenType
-import com.turkcellteknoloji.iotdb.security.AuthPrincipalInfo
 import com.turkcellteknoloji.iotdb.domain.DatabaseUser
-import com.turkcellteknoloji.iotdb.security.OauthBearerToken
-import com.turkcellteknoloji.iotdb.security.ExpiredTokenException
 import com.turkcellteknoloji.iotdb.domain.UserInfo
-import com.turkcellteknoloji.iotdb.security.UsernamePasswordToken
 import com.turkcellteknoloji.iotdb.domain.Client
+
 /**
  * Created by Anil Chalil on 11/15/13.
  */
@@ -61,9 +52,11 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
   clientRepository.saveDatabaseUser(user)
   val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 0, 0)
   val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 100, 0)
+
   def disable {
     clientRepository.upsertDatabaseUser(user.copy(disabled = true))
   }
+
   def passivate {
     clientRepository.upsertDatabaseUser(user.copy(activated = false))
   }
@@ -71,7 +64,8 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
   def revert(user: Client) {
     clientRepository.upsertDatabaseUser(user.asInstanceOf[UserInfo])
   }
-  "DatabaseUser" should behave like basic(new UsernamePasswordToken(user.username,"test",AuthPrincipalType.DatabaseUser), new UsernamePasswordToken(user.username,"wrong",AuthPrincipalType.DatabaseUser),new UsernamePasswordToken("wrıng","wrong",AuthPrincipalType.DatabaseUser),validToken,expiredToken)
+
+  "DatabaseUser" should behave like basic(new UsernamePasswordToken(user.username, "test", AuthPrincipalType.DatabaseUser), new UsernamePasswordToken(user.username, "wrong", AuthPrincipalType.DatabaseUser), new UsernamePasswordToken("wrıng", "wrong", AuthPrincipalType.DatabaseUser), validToken, expiredToken)
   "DatabaseUser" should behave like client(user, validToken)
   "DatabaseUser" should behave like user(user, userPass, AuthPrincipalType.DatabaseUser)
 

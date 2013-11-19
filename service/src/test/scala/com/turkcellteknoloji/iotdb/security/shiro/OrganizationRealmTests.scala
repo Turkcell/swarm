@@ -26,7 +26,6 @@ import org.apache.shiro.crypto.hash.Sha1Hash
 import com.turkcellteknoloji.iotdb.security._
 import com.turkcellteknoloji.iotdb.domain.Organization
 import com.turkcellteknoloji.iotdb.domain.AdminUser
-import com.turkcellteknoloji.iotdb.security.AuthPrincipalInfo
 import scala.collection.JavaConverters._
 
 /**

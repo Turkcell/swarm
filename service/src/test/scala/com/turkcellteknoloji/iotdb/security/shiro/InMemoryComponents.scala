@@ -16,7 +16,6 @@
 
 package com.turkcellteknoloji.iotdb.security.shiro
 
-import com.turkcellteknoloji.iotdb.security.TokenRepositoryComponent
 import com.turkcellteknoloji.iotdb.domain.ResourceRepositoryComponent
 import com.turkcellteknoloji.iotdb.domain.ClientRepositoryComponent
 import com.turkcellteknoloji.iotdb.domain.ClientRepository
@@ -25,21 +24,15 @@ import com.turkcellteknoloji.iotdb.domain.Device
 import com.turkcellteknoloji.iotdb.domain.Database
 import java.util.UUID
 import com.turkcellteknoloji.iotdb.domain.OrganizationInfo
-import com.turkcellteknoloji.iotdb.security.ClientSecret
-import com.turkcellteknoloji.iotdb.security.ClientID
 import com.turkcellteknoloji.iotdb.domain.UserInfo
 import com.turkcellteknoloji.iotdb.domain.DatabaseInfo
-import com.turkcellteknoloji.iotdb.domain.Organization
-import com.turkcellteknoloji.iotdb.security.TokenInfo
 import com.turkcellteknoloji.iotdb.domain.ResourceRepository
-import com.turkcellteknoloji.iotdb.security.OauthBearerToken
 import scala.concurrent._
 import scala.collection.mutable.Map
-import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import com.turkcellteknoloji.iotdb.domain.Organization
 import com.turkcellteknoloji.iotdb.domain.DublicateIDEntity
-import com.turkcellteknoloji.iotdb.security.TokenInfo
+import com.turkcellteknoloji.iotdb.security.{TokenInfo, TokenRepositoryComponent}
 
 trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent {
   val tokenRepository = new TokenRepository {
@@ -49,9 +42,11 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
     def getTokenInfo(token: OauthBearerToken): TokenInfo = this.synchronized(tokenStore(token.tokenID))
 
     def getClientSecret(clientID: ClientID): ClientSecret = this.synchronized(ClientSecret(secretStore(clientID.principalID)))
+
     protected def putTokenInfo(tokenInfo: TokenInfo) = this.synchronized {
       tokenStore += (tokenInfo.uuid -> tokenInfo)
     }
+
     def saveClientSecret(clientID: ClientID, secret: ClientSecret) = this.synchronized {
       secretStore += (clientID.principalID -> secret.secret)
     }
@@ -61,19 +56,34 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
     val adminStore = Map[UUID, UserInfo]()
     val dbUserStore = Map[UUID, UserInfo]()
     val deviceStore = Map[UUID, Device]()
-    def getDatabaseUserAsync(uuid: UUID): Future[Option[UserInfo]] = future { getDatabaseUser(uuid) }
 
-    def getAdminUser(uuid: UUID): Option[UserInfo] = this.synchronized { adminStore.get(uuid) }
+    def getDatabaseUserAsync(uuid: UUID): Future[Option[UserInfo]] = future {
+      getDatabaseUser(uuid)
+    }
 
-    def getDeviceAsync(uuid: UUID): Future[Option[Device]] = future { getDevice(uuid) }
+    def getAdminUser(uuid: UUID): Option[UserInfo] = this.synchronized {
+      adminStore.get(uuid)
+    }
 
-    def getAdminUserAsync(uuid: UUID): Future[Option[UserInfo]] = future { getAdminUser(uuid) }
+    def getDeviceAsync(uuid: UUID): Future[Option[Device]] = future {
+      getDevice(uuid)
+    }
 
-    def getDatabaseUser(uuid: UUID): Option[UserInfo] = this.synchronized { dbUserStore.get(uuid) }
+    def getAdminUserAsync(uuid: UUID): Future[Option[UserInfo]] = future {
+      getAdminUser(uuid)
+    }
 
-    def getDevice(uuid: UUID): Option[Device] = { deviceStore.get(uuid) }
+    def getDatabaseUser(uuid: UUID): Option[UserInfo] = this.synchronized {
+      dbUserStore.get(uuid)
+    }
 
-    def getAdminUserByEmail(email: String): Option[UserInfo] = this.synchronized { adminStore.values.find(_.email == email) }
+    def getDevice(uuid: UUID): Option[Device] = {
+      deviceStore.get(uuid)
+    }
+
+    def getAdminUserByEmail(email: String): Option[UserInfo] = this.synchronized {
+      adminStore.values.find(_.email == email)
+    }
 
     def getAdminUserByUsername(username: String): Option[UserInfo] = this.synchronized(adminStore.values.find(_.username == username))
 
@@ -136,11 +146,14 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
         orgStore += (org.id -> org)
       else throw DublicateIDEntity("invalid org")
     }
+
     def getDatabase(id: UUID): Option[Database] = this.synchronized(dbStore.get(id))
 
     def getDatabaseInfo(id: UUID): Option[DatabaseInfo] = getDatabase(id).map(db => DatabaseInfo(db.id, db.name))
 
-    def getDatabaseInfoAsync(uuid: UUID): Future[Option[DatabaseInfo]] = future { getDatabaseInfo(uuid) }
+    def getDatabaseInfoAsync(uuid: UUID): Future[Option[DatabaseInfo]] = future {
+      getDatabaseInfo(uuid)
+    }
 
     def getDatabaseMetadata(id: UUID): Option[DatabaseMetadata] = getDatabase(id).map(db => db.metadata)
 
@@ -148,7 +161,9 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
 
     def getOrganizationInfo(id: UUID): Option[OrganizationInfo] = getOrganization(id).map(org => OrganizationInfo(org.id, org.name))
 
-    def getOrganizationInfoAsync(uuid: UUID): Future[Option[OrganizationInfo]] = future { getOrganizationInfo(uuid) }
+    def getOrganizationInfoAsync(uuid: UUID): Future[Option[OrganizationInfo]] = future {
+      getOrganizationInfo(uuid)
+    }
 
     def upsertOrganization(org: Organization): Option[Organization] = this.synchronized {
       if (orgStore.values.forall(o => o.name != org.name || o.id == org.id))
@@ -156,11 +171,13 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       else
         throw DublicateIDEntity("invalid org")
     }
+
     def saveDatabase(db: Database): Unit = this.synchronized {
       if (dbStore.values.forall(_.name != db.name) && !dbStore.contains(db.id))
         dbStore += (db.id -> db)
       else throw DublicateIDEntity("invalid database")
     }
+
     def upsertDatabase(db: Database): Option[Database] = this.synchronized {
       if (dbStore.values.forall(d => d.name != db.name || d.id == db.id))
         dbStore.put(db.id, db)

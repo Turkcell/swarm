@@ -5,9 +5,9 @@ import org.apache.oltu.oauth2.rs.request.OAuthAccessResourceRequest
 import org.apache.shiro.SecurityUtils
 
 import com.turkcellteknoloji.iotdb.security.AuthPrincipalType._
-import com.turkcellteknoloji.iotdb.security.OauthBearerToken
 
 import javax.servlet.http.HttpServletRequest
+import com.turkcellteknoloji.iotdb.security.shiro.OauthBearerToken
 
 /**
  * Created by capacman on 10/31/13.

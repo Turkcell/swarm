@@ -19,11 +19,12 @@ package com.turkcellteknoloji.iotdb.management
 import com.turkcellteknoloji.iotdb.domain._
 import com.turkcellteknoloji.iotdb.domain.OrganizationInfo
 import com.turkcellteknoloji.iotdb.domain.DatabaseInfo
-import com.turkcellteknoloji.iotdb.domain.Device
 import java.util.UUID
 import scala.concurrent._
-import com.turkcellteknoloji.iotdb.security.{ TokenRepositoryComponent, ClientID, OauthBearerToken }
 import ExecutionContext.Implicits.global
+import com.turkcellteknoloji.iotdb.security.TokenRepositoryComponent
+import com.turkcellteknoloji.iotdb.security.shiro.{ClientID, OauthBearerToken}
+
 /**
  * Created by Anil Chalil on 11/1/13.
  */

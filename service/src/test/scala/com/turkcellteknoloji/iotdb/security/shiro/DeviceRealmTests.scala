@@ -23,26 +23,19 @@ import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
 import com.turkcellteknoloji.iotdb.security.TokenCategory
-import com.turkcellteknoloji.iotdb.security.TokenType
-import com.turkcellteknoloji.iotdb.security.AuthPrincipalInfo
 import com.turkcellteknoloji.iotdb.security.AuthPrincipalType
 import com.turkcellteknoloji.iotdb.domain.Client
 import com.turkcellteknoloji.iotdb.domain.Device
-import com.turkcellteknoloji.iotdb.domain.Database
 import com.turkcellteknoloji.iotdb.domain.AdminUser
 import com.turkcellteknoloji.iotdb.UUIDGenerator
 import org.apache.shiro.crypto.hash.Sha1Hash
 import com.turkcellteknoloji.iotdb.Config
 import com.turkcellteknoloji.iotdb.domain.Database
 import com.turkcellteknoloji.iotdb.domain.Organization
-import com.turkcellteknoloji.iotdb.domain.ResourceRepository
 import com.turkcellteknoloji.iotdb.domain.DatabaseMetadata
 import com.turkcellteknoloji.iotdb.domain.OrganizationInfo
 import com.turkcellteknoloji.iotdb.domain.DatabaseInfo
 import scala.collection.JavaConverters._
-import com.turkcellteknoloji.iotdb.security.ClientSecret
-import com.turkcellteknoloji.iotdb.security.ClientID
-import com.turkcellteknoloji.iotdb.security.ClientIDSecretToken
 
 class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
   val realm = new DeviceRealm {

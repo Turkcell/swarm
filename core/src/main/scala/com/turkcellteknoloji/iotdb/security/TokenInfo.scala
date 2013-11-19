@@ -17,10 +17,12 @@
 package com.turkcellteknoloji.iotdb
 package security
 
+
 import java.util.UUID
 import org.joda.time.DateTime
-import TokenCategory._
-import domain.{ ResourceRepositoryComponent, ClientRepositoryComponent }
+import domain.{ResourceRepositoryComponent, ClientRepositoryComponent}
+import com.turkcellteknoloji.iotdb.security.TokenCategory._
+import com.turkcellteknoloji.iotdb.security.shiro._
 
 /**
  * Created by Anil Chalil on 11/15/13.
