@@ -1,8 +1,11 @@
 // Comment to get more information during initialization
 logLevel := Level.Warn
 
-// The Typesafe repository 
-resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
+// The Typesafe repository
+resolvers ++= Seq(
+  "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
+  "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
+)
 
 // Use the Play sbt plugin for Play projects
 addSbtPlugin("com.earldouglas" % "xsbt-web-plugin" % "0.4.2")
