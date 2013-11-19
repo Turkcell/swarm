@@ -71,7 +71,7 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
   def revert(user: Client) {
     clientRepository.upsertDatabaseUser(user.asInstanceOf[UserInfo])
   }
-  "DatabaseUser" should behave like client(user, userPass, AuthPrincipalType.DatabaseUser, new UsernamePasswordToken(user.username, userPass, AuthPrincipalType.DatabaseUser), new UsernamePasswordToken(user.username, "wrong pass", AuthPrincipalType.DatabaseUser), validToken, expiredToken)
+  "DatabaseUser" should behave like client(user, userPass, AuthPrincipalType.DatabaseUser, new UsernamePasswordToken(user.username, userPass, AuthPrincipalType.DatabaseUser), new UsernamePasswordToken(user.username, "wrong pass", AuthPrincipalType.DatabaseUser),new UsernamePasswordToken("wrong", "wrong", AuthPrincipalType.DatabaseUser), validToken, expiredToken)
 
   "DatabaseUser" should behave like user(user, userPass, AuthPrincipalType.DatabaseUser)
 

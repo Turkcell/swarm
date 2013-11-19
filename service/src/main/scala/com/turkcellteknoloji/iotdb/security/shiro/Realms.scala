@@ -16,8 +16,8 @@
 
 package com.turkcellteknoloji.iotdb.security.shiro
 
-import org.apache.shiro.realm.{ AuthorizingRealm, Realm }
-import org.apache.shiro.authc.{ AuthenticationToken, AuthenticationInfo, SimpleAuthenticationInfo, AuthenticationException }
+import org.apache.shiro.realm.{AuthorizingRealm, Realm}
+import org.apache.shiro.authc._
 import com.turkcellteknoloji.iotdb.security._
 import scala.concurrent.duration._
 import org.apache.shiro.authc.credential.CredentialsMatcher
@@ -26,6 +26,9 @@ import com.turkcellteknoloji.iotdb.Config
 import scala.concurrent._
 import scala.Some
 import ExecutionContext.Implicits.global
+import com.turkcellteknoloji.iotdb.security.UsernamePasswordToken
+import scala.Some
+
 /**
  * Created by Anil Chalil on 11/14/13.
  */
@@ -57,7 +60,7 @@ trait BearerRealmBaseComponent {
           if (check != null)
             check(entity)
           new SimpleAuthenticationInfo(entity, tokenInfo, getName)
-        case None => throw new AuthenticationException(s"${idEntity.getClass().getName} not found for ${bearerToken.principalID}")
+        case None => throw new UnknownAccountException(s"${idEntity.getClass().getName} not found for ${bearerToken.principalID}")
       }, Duration.Inf)
     }
   }
@@ -77,7 +80,7 @@ trait ClientIDSecretRealmBaseComponent {
           if (check != null)
             check(entity)
           new SimpleAuthenticationInfo(entity, secret, getName)
-        case None => throw new AuthenticationException(s"${idEntity.getClass().getName} not found for ${clientIDSecret.principalID}")
+        case None => throw new UnknownAccountException(s"${idEntity.getClass().getName} not found for ${clientIDSecret.principalID}")
       }, 0 nanos)
     }
   }
@@ -139,14 +142,16 @@ trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerR
   trait DeviceRealm extends AuthorizingRealm with BearerRealmBase with ClientIDSecretRealmBase {
     def checkClient(client: Client) {
       if (!client.activated)
-        throw new AuthenticationException("client is not activated")
+        throw new LockedAccountException("client is not activated")
       if (client.disabled)
-        throw new AuthenticationException("client is disabled")
+        throw new DisabledAccountException("client is disabled")
     }
+
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Device
       case _ => false
     }
+
     override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
 
       case bearerToken: OauthBearerToken =>
@@ -160,6 +165,7 @@ trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerR
         }
     }
   }
+
 }
 
 trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
@@ -172,11 +178,12 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
     def getPrincipalByUsername(principal: String): Option[UserInfo]
 
     private def isEmail(value: String) = value.split("@").length == 2
+
     def checkClient(client: Client) {
       if (!client.activated)
-        throw new AuthenticationException("client is not activated")
+        throw new LockedAccountException("client is not activated")
       if (client.disabled)
-        throw new AuthenticationException("client is disabled")
+        throw new DisabledAccountException("client is disabled")
     }
 
     override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
@@ -188,10 +195,11 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
 
       case usernamePasswordToken: UsernamePasswordToken =>
         val userInfoF = if (isEmail(usernamePasswordToken.getPrincipal)) getPrincipalByEmail(usernamePasswordToken.getPrincipal) else getPrincipalByUsername(usernamePasswordToken.getPrincipal)
-        userInfoF.map { userInfo =>
-          checkClient(userInfo)
-          new SimpleAuthenticationInfo(if (userInfo.username == usernamePasswordToken.getPrincipal) userInfo.username else userInfo.email, userInfo.credential, Config.userInfoHash, getName)
-        }.getOrElse(throw new AuthenticationException(s"userinfo not found for ${usernamePasswordToken.getPrincipal}"))
+        userInfoF.map {
+          userInfo =>
+            checkClient(userInfo)
+            new SimpleAuthenticationInfo(if (userInfo.username == usernamePasswordToken.getPrincipal) userInfo.username else userInfo.email, userInfo.credential, Config.userInfoHash, getName)
+        }.getOrElse(throw new UnknownAccountException(s"userinfo not found for ${usernamePasswordToken.getPrincipal}"))
     }
   }
 
@@ -206,7 +214,9 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
       case t: OauthBearerToken => t.authPrincipalType == AuthPrincipalType.Admin
       case _ => false
     }
+
     def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getAdminUserByEmail(principal)
+
     def getPrincipalByUsername(principal: String): Option[UserInfo] = clientRepository.getAdminUserByUsername(principal)
   }
 
@@ -221,7 +231,9 @@ trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
       case t: OauthBearerToken => t.authPrincipalType == AuthPrincipalType.DatabaseUser
       case _ => false
     }
+
     def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByEmail(principal)
+
     def getPrincipalByUsername(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByUsername(principal)
   }
 

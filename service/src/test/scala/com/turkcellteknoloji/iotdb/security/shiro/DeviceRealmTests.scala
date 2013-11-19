@@ -1,3 +1,19 @@
+/*
+ * Copyright 2013 Turkcell Teknoloji Inc. and individual
+ * contributors by the 'Created by' comments.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.turkcellteknoloji.iotdb.security.shiro
 
 import org.scalatest.FlatSpec
@@ -44,6 +60,7 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
   val database = Database(UUIDGenerator.secretGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24), OrganizationInfo(org.id, org.name))
   resourceRepository.saveDatabase(database)
   val device = Device(UUIDGenerator.secretGenerator.generate(), "mydevice", DatabaseInfo(database.id, database.name), true, false)
+  val deviceNoneExistent = Device(UUIDGenerator.secretGenerator.generate(), "mydevice2", DatabaseInfo(database.id, database.name), true, false)
   val userPass = "test"
   clientRepository.saveDevice(device)
   val secret = ClientSecret(AuthPrincipalType.Device)
@@ -61,5 +78,5 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
     clientRepository.upsertDevice(device.asInstanceOf[Device])
   }
 
-  "Device" should behave like client(device, userPass, AuthPrincipalType.DatabaseUser, ClientIDSecretToken(ClientID(device), secret), ClientIDSecretToken(ClientID(device), secret), validToken, expiredToken)
+  "Device" should behave like client(device, userPass, AuthPrincipalType.DatabaseUser, ClientIDSecretToken(ClientID(device), secret), ClientIDSecretToken(ClientID(device), ClientSecret(AuthPrincipalType.Device)),ClientIDSecretToken(ClientID(deviceNoneExistent), ClientSecret(AuthPrincipalType.Device)), validToken, expiredToken)
 }
