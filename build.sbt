@@ -1,4 +1,4 @@
-organization := "com.turkcellteknoloji.iotdb"
+organization := "io.swarm"
 
 version := "1.0-SNAPSHOT"
 
