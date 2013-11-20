@@ -22,6 +22,8 @@ import io.swarm.domain
  * Created by Anil Chalil on 11/19/13.
  */
 object Permissions {
+  val allRights = "admin,access,get,put,post,delete".split(",").toSet
+
   def forOrganization(orgRefs: domain.OrganizationRef*) = {
     new CustomPermission(s"organizations:admin,access,get,put,post,delete:${orgRefs.map(_.id).mkString(",")}")
   }
@@ -29,4 +31,6 @@ object Permissions {
   def forDatabases(dbRefs: domain.DatabaseRef*) = {
     new CustomPermission(s"databases:admin,access,get,put,post,delete:${dbRefs.map(_.id).mkString(",")}")
   }
+
+  def isValidRights(vals: Iterable[String]) = vals.forall(allRights.contains(_))
 }
