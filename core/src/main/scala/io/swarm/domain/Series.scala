@@ -23,7 +23,13 @@ import io.swarm.IOTDBException
 /**
  * Created by Anil Chalil on 10/22/13.
  */
-case class Series(id: UUID, key: String, name: Option[String], tags: Set[String], attributes: Map[String, String])
+
+object SeriesType extends Enumeration {
+  type SeriesType = Value
+  val Long, Float = Value
+}
+
+case class Series(id: UUID, key: String, name: Option[String], tags: Set[String], attributes: Map[String, String],`type`:SeriesType.SeriesType)
 
 trait IDEntity {
   def id: UUID
