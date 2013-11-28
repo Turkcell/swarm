@@ -38,9 +38,7 @@ import io.swarm.domain.DatabaseInfo
 import scala.collection.JavaConverters._
 
 class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
-  val realm = new DeviceRealm {
-    def doGetAuthorizationInfo(principals: PrincipalCollection) = null
-  }
+  val realm = DeviceRealm
   realm.setCredentialsMatcher(new ClientIDSecretBearerCredentialsMatcher)
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
@@ -49,8 +47,8 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
   clientRepository.saveAdminUser(TestData.user)
   resourceRepository.saveOrganization(TestData.org)
   resourceRepository.saveDatabase(TestData.database)
-  val device = Device(UUIDGenerator.secretGenerator.generate(), "mydevice", DatabaseInfo(TestData.database.id, TestData.database.name), true, false)
-  val deviceNoneExistent = Device(UUIDGenerator.secretGenerator.generate(), "mydevice2", DatabaseInfo(TestData.database.id, TestData.database.name), true, false)
+  val device = Device(UUIDGenerator.secretGenerator.generate(), "mydevice", DatabaseInfo(TestData.database.id, TestData.database.name), true, false,Set())
+  val deviceNoneExistent = Device(UUIDGenerator.secretGenerator.generate(), "mydevice2", DatabaseInfo(TestData.database.id, TestData.database.name), true, false,Set())
   val userPass = "test"
   clientRepository.saveDevice(device)
   val secret = ClientSecret(AuthPrincipalType.Device)

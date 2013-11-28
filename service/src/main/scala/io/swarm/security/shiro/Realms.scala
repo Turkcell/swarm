@@ -126,7 +126,7 @@ trait OrganizationRealmComponent extends ClientIDSecretBearerRealmBaseComponent 
     override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
       val info = new SimpleAuthorizationInfo()
       val org = principals.byType(classOf[Organization]).asScala.head
-      info.addObjectPermission(Permissions.forOrganizations(org))
+      info.addObjectPermission(Permissions(org))
       info.addObjectPermission(Permissions.forDatabases(org.databases))
       info.addRoles(List(Roles.DatabaseAdmin, Roles.OrganizationAdmin).asJavaCollection)
       info
@@ -158,7 +158,7 @@ trait DatabaseRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
 trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
-  trait DeviceRealm extends AuthorizingRealm with BearerRealmBase with ClientIDSecretRealmBase {
+  object DeviceRealm extends AuthorizingRealm with BearerRealmBase with ClientIDSecretRealmBase {
     def checkClient(client: Client) {
       if (!client.activated)
         throw new LockedAccountException("client is not activated")
@@ -182,6 +182,14 @@ trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerR
         clientIDSecret.authPrincipalType match {
           case AuthPrincipalType.Device => authorizeClientIDSecret(clientRepository.getDeviceAsync(clientIDSecret.principalID), clientIDSecret, checkClient)
         }
+    }
+
+    override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
+      val info = new SimpleAuthorizationInfo()
+      val device = principals.byType(classOf[Device]).asScala.head
+      info.addObjectPermissions(Permissions(device.permissions).asJavaCollection)
+      info.addRoles(List(Roles.Device).asJavaCollection)
+      info
     }
   }
 
@@ -217,7 +225,7 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
         userInfoF.map {
           userInfo =>
             checkClient(userInfo)
-            new SimpleAuthenticationInfo(if (userInfo.username == usernamePasswordToken.getPrincipal) userInfo.username else userInfo.email, userInfo.credential, Config.userInfoHash, getName)
+            new SimpleAuthenticationInfo(userInfo, userInfo.credential, Config.userInfoHash, getName)
         }.getOrElse(throw new UnknownAccountException(s"userinfo not found for ${usernamePasswordToken.getPrincipal}"))
     }
   }
@@ -241,7 +249,7 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
     override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
       val info = new SimpleAuthorizationInfo()
       val user = principals.byType(classOf[AdminUser]).asScala.head
-      info.addObjectPermission(Permissions.forOrganizations(user.organizations))
+      info.addObjectPermission(Permissions(user.organizations))
       info.addObjectPermission(Permissions.forDatabases(user.organizations.flatMap(_.databases)))
       info.addRoles(List(Roles.AdminUser, Roles.DatabaseAdmin, Roles.OrganizationAdmin).asJavaCollection)
       info
@@ -253,7 +261,7 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
 trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent =>
 
-  trait DatabaseUserRealm extends UserInfoRealmBase {
+  object DatabaseUserRealm extends UserInfoRealmBase {
     override def supports(token: AuthenticationToken) = token match {
       case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.DatabaseUser
       case t: OauthBearerToken => t.authPrincipalType == AuthPrincipalType.DatabaseUser
@@ -263,6 +271,14 @@ trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
     def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByEmail(principal)
 
     def getPrincipalByUsername(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByUsername(principal)
+
+    override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
+      val info = new SimpleAuthorizationInfo()
+      val user = principals.byType(classOf[DatabaseUser]).asScala.head
+      info.addObjectPermissions(Permissions(user.permissions).asJavaCollection)
+      info.addRoles(List(Roles.DatabaseUser).asJavaCollection)
+      info
+    }
   }
 
 }

@@ -36,7 +36,8 @@ trait BasicRealmBehaviors {
       SecurityUtils.getSubject().isAuthenticated() should be(false)
       SecurityUtils.getSubject.login(validAuthToken)
       SecurityUtils.getSubject().getPrincipal() match {
-        case e: IDEntity => e.id should be(validAuthToken.getPrincipal().asInstanceOf[ClientID].principalID)
+        case e: IDEntity if validAuthToken.getPrincipal().isInstanceOf[ClientID] => e.id should be(validAuthToken.getPrincipal().asInstanceOf[ClientID].principalID)
+        case u: UserInfo => List(u.username, u.email) should contain(validAuthToken.getPrincipal())
         case _ => SecurityUtils.getSubject().getPrincipal() should be(validAuthToken.getPrincipal())
       }
     }
@@ -115,7 +116,7 @@ trait UserRealmBehaviors extends ClientRealmBehaviors {
     it should "authenticate with email and password" in {
       SecurityUtils.getSubject().isAuthenticated() should be(false)
       SecurityUtils.getSubject.login(new UsernamePasswordToken(user.email, userPass, principalType))
-      SecurityUtils.getSubject().getPrincipal() should be(user.email)
+      SecurityUtils.getSubject().getPrincipal().asInstanceOf[UserInfo].email should be(user.email)
     }
   }
 }

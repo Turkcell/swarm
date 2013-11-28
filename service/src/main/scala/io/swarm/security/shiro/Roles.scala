@@ -8,4 +8,6 @@ object Roles {
   val AdminUser = "AdminUser"
   val OrganizationAdmin = "OrganizationAdmin"
   val DatabaseAdmin = "DatabaseAdmin"
+  val DatabaseUser = "DatabaseUser"
+  val Device = "Device"
 }
