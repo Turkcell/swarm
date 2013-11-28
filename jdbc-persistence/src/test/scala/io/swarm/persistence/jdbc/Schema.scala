@@ -92,6 +92,14 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
+  it should "throw DublicateIDEntity for duplicate series" in {
+    intercept[DuplicateIDEntity] {
+      db withSession {
+        saveSeries(series.head, databases.head.id)
+      }
+    }
+  }
+
   it should "get database by id" in {
     db withSession {
       getDatabase(databases.head.id) should be(Some(databases.head))
@@ -99,10 +107,26 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
+  it should "throw DublicateIDEntity for duplicate database" in {
+    intercept[DuplicateIDEntity] {
+      db withSession {
+        saveDatabase(databases.head,organization)
+      }
+    }
+  }
+
   it should "get organization by id" in {
     db withSession {
       getOrganizationByID(organization.id) should be(Some(organization))
       getOrganizationByID(UUIDGenerator.secretGenerator.generate()) should be(None)
+    }
+  }
+
+  it should "throw DublicateIDEntity for duplicate organizations" in {
+    intercept[DuplicateIDEntity] {
+      db withSession {
+        saveOrganization(organization)
+      }
     }
   }
 }

@@ -38,6 +38,12 @@ trait MetadataComponent {
       d <- Databases
       o <- this if (o.id is id) && (o.deleted is false) && (d.organization is id) && (d.deleted is false)
     } yield (o.name, d.id, d.name, d.oauthTTL)
+
+    val organizationByName = for {
+      name <- Parameters[String]
+      d <- Databases
+      o <- this if (o.name is name) && (o.deleted is false) && (d.organization is o.id) && (d.deleted is false)
+    } yield (o.id, d.id, d.name, d.oauthTTL)
   }
 
   // Definition of the databases table
@@ -60,6 +66,11 @@ trait MetadataComponent {
       id <- Parameters[String]
       d <- this if (d.id is id) && (d.deleted is false)
     } yield (d.name, d.oauthTTL)
+
+    val databaseByName = for {
+      name <- Parameters[String]
+      d <- this if (d.name is name) && (d.deleted is false)
+    } yield (d.id, d.oauthTTL)
   }
 
 
@@ -121,6 +132,21 @@ trait MetadataComponent {
     def series = foreignKey("SERIES_ATTRIBUTES_FK", seriesID, Series)(_.id)
   }
 
+  object Devices extends Table[(String, String, String, Boolean, Boolean)]("DEVICES") {
+    def id = column[String]("DEVICE_ID")
+
+    def deviceID = column[String]("DEVICE_OWN_ID")
+
+    def dbID = column[String]("DB_ID")
+
+    def activated = column[Boolean]("ACTIVATED")
+
+    def disabled = column[Boolean]("DISABLED")
+
+    def * = id ~ deviceID ~ dbID ~ activated ~ disabled
+
+  }
+
   def create(implicit session: Session) {
     (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).create
   }
@@ -130,6 +156,8 @@ trait MetadataComponent {
   }
 
   def saveDatabase(database: domain.Database, org: OrganizationRef)(implicit session: Session) {
+    if (Databases.databaseByName(database.name).firstOption.isDefined)
+      throw domain.DuplicateIDEntity(s"database with ${database.name} already exist!")
     (Databases.id ~ Databases.name ~ Databases.organization ~ Databases.oauthTTL).insert(database.id.toString, database.name, org.id.toString, database.metadata.oauthTTL)
   }
 
@@ -141,6 +169,10 @@ trait MetadataComponent {
 
   def getDatabase(dbID: UUID)(implicit session: Session) = {
     Databases.databaseByID(dbID.toString).firstOption.map(d => domain.Database(dbID, d._1, domain.DatabaseMetadata(d._2)))
+  }
+
+  def getDatabaseByName(name: String)(implicit session: Session) = {
+    Databases.databaseByName(name).firstOption.map(d => domain.Database(UUID.fromString(d._1), name, domain.DatabaseMetadata(d._2)))
   }
 
   def getSeries(seriesID: UUID)(implicit session: Session) = {
@@ -231,16 +263,14 @@ trait MetadataComponent {
     }.toArray: _*)
   }
 
-  def saveSeries(series: domain.Series, dbID: UUID)(implicit session: Session) = {
-    val exists = Query(Series).filter(s => (s.deleted is false) && (s.key is series.key) && (s.dbID is dbID.toString)).map(_.id).firstOption
-    if (exists.isDefined)
-      None
+  def saveSeries(series: domain.Series, dbID: UUID)(implicit session: Session) {
+    if (Series.seriesByKey(series.key, dbID.toString).firstOption.isDefined)
+      throw domain.DuplicateIDEntity(s"series with key ${series.key} is alread defined!")
     else {
       val seriesID: String = series.id.toString
       (Series.id ~ Series.dbID ~ Series.key ~ Series.name ~ Series.seriesType).insert(seriesID, dbID.toString, series key, series.name, series.`type`.toString)
       insertTags(seriesID, series.tags)
       insertAttributes(seriesID, series.attributes)
-      series
     }
   }
 
@@ -308,10 +338,22 @@ trait MetadataComponent {
       Some(domain.Organization(orgID, orgs.head._1, orgs.map(o => domain.Database(UUID.fromString(o._2), o._3, domain.DatabaseMetadata(o._4))).toSet))
   }
 
-  def saveOrganization(orgRef: OrganizationRef)(implicit session: Session) = {
-    (Organizations.id ~ Organizations.name).insert(orgRef.id.toString, orgRef.name)
-    orgRef
+  def getOrganizationByName(orgName: String)(implicit session: Session) = {
+    val orgs = Organizations.organizationByName(orgName).list
+    if (orgs == Nil)
+      None
+    else
+      Some(domain.Organization(UUID.fromString(orgs.head._1), orgName, orgs.map(o => domain.Database(UUID.fromString(o._2), o._3, domain.DatabaseMetadata(o._4))).toSet))
   }
+
+  def saveOrganization(orgRef: OrganizationRef)(implicit session: Session) {
+    if (Organizations.organizationByName(orgRef.name).firstOption.isDefined)
+      throw domain.DuplicateIDEntity(s"organization with ${orgRef.name} is already defined!")
+    else
+      (Organizations.id ~ Organizations.name).insert(orgRef.id.toString, orgRef.name)
+  }
+
+
 }
 
 

@@ -31,7 +31,7 @@ import scala.concurrent._
 import scala.collection.mutable.Map
 import scala.concurrent.ExecutionContext.Implicits.global
 import io.swarm.domain.Organization
-import io.swarm.domain.DublicateIDEntity
+import io.swarm.domain.DuplicateIDEntity
 import io.swarm.security.{TokenInfo, TokenRepositoryComponent}
 
 trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent {
@@ -95,7 +95,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (adminStore.values.forall(_.email != user.email) && adminStore.values.forall(_.username != user.username) && !adminStore.contains(user.id))
         adminStore += (user.id -> user)
       else {
-        throw DublicateIDEntity("invalid user")
+        throw DuplicateIDEntity("invalid user")
       }
     }
 
@@ -103,7 +103,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (dbUserStore.values.forall(_.email != user.email) && dbUserStore.values.forall(_.username != user.username) && !dbUserStore.contains(user.id))
         dbUserStore += (user.id -> user)
       else {
-        throw DublicateIDEntity("invalid user")
+        throw DuplicateIDEntity("invalid user")
       }
     }
 
@@ -111,7 +111,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (dbUserStore.values.forall(u => u.id == user.id || u.email != user.email) && dbUserStore.values.forall(u => u.id == user.id || u.username != user.username))
         dbUserStore.put(user.id, user)
       else {
-        throw DublicateIDEntity("invalid user")
+        throw DuplicateIDEntity("invalid user")
       }
     }
 
@@ -119,7 +119,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (adminStore.values.forall(u => u.id == user.id || u.email != user.email) && adminStore.values.forall(u => u.id == user.id || u.username != user.username))
         adminStore.put(user.id, user)
       else {
-        throw DublicateIDEntity("invalid user")
+        throw DuplicateIDEntity("invalid user")
       }
     }
 
@@ -127,13 +127,13 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (deviceStore.values.forall(d => d.deviceID != device.deviceID || d.id == device.id))
         deviceStore.put(device.id, device)
       else
-        throw DublicateIDEntity("invalid device")
+        throw DuplicateIDEntity("invalid device")
     }
 
     def saveDevice(device: Device) = this.synchronized {
       if (deviceStore.values.forall(_.deviceID != device.deviceID) && !deviceStore.contains(device.id))
         deviceStore += (device.id -> device)
-      else throw DublicateIDEntity("invalid device")
+      else throw DuplicateIDEntity("invalid device")
     }
   }
 
@@ -144,7 +144,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
     def saveOrganization(org: Organization) = this.synchronized {
       if (orgStore.values.forall(_.name != org.name) && !orgStore.contains(org.id))
         orgStore += (org.id -> org)
-      else throw DublicateIDEntity("invalid org")
+      else throw DuplicateIDEntity("invalid org")
     }
 
     def getDatabase(id: UUID): Option[Database] = this.synchronized(dbStore.get(id))
@@ -169,19 +169,19 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
       if (orgStore.values.forall(o => o.name != org.name || o.id == org.id))
         orgStore.put(org.id, org)
       else
-        throw DublicateIDEntity("invalid org")
+        throw DuplicateIDEntity("invalid org")
     }
 
     def saveDatabase(db: Database): Unit = this.synchronized {
       if (dbStore.values.forall(_.name != db.name) && !dbStore.contains(db.id))
         dbStore += (db.id -> db)
-      else throw DublicateIDEntity("invalid database")
+      else throw DuplicateIDEntity("invalid database")
     }
 
     def upsertDatabase(db: Database): Option[Database] = this.synchronized {
       if (dbStore.values.forall(d => d.name != db.name || d.id == db.id))
         dbStore.put(db.id, db)
-      else throw DublicateIDEntity("invalid database")
+      else throw DuplicateIDEntity("invalid database")
     }
 
   }

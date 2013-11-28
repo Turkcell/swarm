@@ -114,10 +114,11 @@ trait ResourceRepositoryComponent {
   val resourceRepository: ResourceRepository
 }
 
-trait DublicateIDEntity extends IOTDBException
+trait DuplicateIDEntity extends IOTDBException
 
-object DublicateIDEntity {
-  def apply(message: String) = new RuntimeException(message) with DublicateIDEntity
+object DuplicateIDEntity {
+  def apply(message: String) = new RuntimeException(message) with DuplicateIDEntity
+  def apply(t: Throwable) = new RuntimeException(t) with DuplicateIDEntity
 }
 
 trait ClientRepository {
