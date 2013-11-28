@@ -4,7 +4,7 @@ import scala.slick.driver.ExtendedProfile
 import io.swarm.domain
 import java.util.UUID
 import scala.slick.jdbc.{GetResult, StaticQuery => Q}
-import io.swarm.domain.OrganizationRef
+import io.swarm.domain.{SeriesType, OrganizationRef}
 
 /**
  * Created by capacman on 10/25/13.
@@ -16,60 +16,84 @@ trait Profile {
 
 trait MetadataComponent {
   this: Profile =>
-
+  //...to be able import profile.simple._
   import profile.simple._
 
-  //...to be able import profile.simple._
-  // Definition of the databases table
-  object Databases extends Table[(String, String, String, Boolean)]("DATABASES") {
-    def id = column[String]("DB_ID", O.PrimaryKey)
 
+
+  // Definition of the Organizations table
+  object Organizations extends Table[(String, String, Boolean)]("Organizations") {
     // This is the primary key column
-    def name = column[String]("DB_NAME")
+    def id = column[String]("ORG_ID", O.PrimaryKey)
 
-    def owner = column[String]("DB_OWNER")
+    def name = column[String]("ORG_NAME")
 
     def deleted = column[Boolean]("DELETED", O.Default(false))
 
     // Every table needs a * projection with the same type as the table's type parameter
-    def * = id ~ name ~ owner ~ deleted
+    def * = id ~ name ~ deleted
+
+    val organizationByID = for {
+      id <- Parameters[String]
+      d <- Databases
+      o <- this if (o.id is id) && (o.deleted is false) && (d.organization is id) && (d.deleted is false)
+    } yield (o.name, d.id, d.name, d.oauthTTL)
+  }
+
+  // Definition of the databases table
+  object Databases extends Table[(String, String, String, Long, Boolean)]("DATABASES") {
+    // This is the primary key column
+    def id = column[String]("DB_ID", O.PrimaryKey)
+
+    def name = column[String]("DB_NAME")
+
+    def organization = column[String]("DB_ORGANIZATION")
+
+    def oauthTTL = column[Long]("OAUTH_TTL", O.Default(0L))
+
+    def deleted = column[Boolean]("DELETED", O.Default(false))
+
+    // Every table needs a * projection with the same type as the table's type parameter
+    def * = id ~ name ~ organization ~ oauthTTL ~ deleted
 
     val databaseByID = for {
       id <- Parameters[String]
       d <- this if (d.id is id) && (d.deleted is false)
-    } yield d.name
+    } yield (d.name, d.oauthTTL)
   }
 
 
-  // Definition of the databases table
-  object Series extends Table[(String, String, String, Option[String], Boolean)]("SERIES") {
+  // Definition of the Series table
+  object Series extends Table[(String, String, String, Option[String], String, Boolean)]("SERIES") {
+    // This is the primary key column
     def id = column[String]("SERIES_ID", O.PrimaryKey)
 
-    // This is the primary key column
     def dbID = column[String]("DB_ID")
 
     def key = column[String]("SERIES_KEY")
 
     def name = column[Option[String]]("SERIES_NAME")
 
+    def seriesType = column[String]("SERIES_TYPE")
+
     def deleted = column[Boolean]("DELETED", O.Default(false))
 
     // Every table needs a * projection with the same type as the table's type parameter
-    def * = id ~ dbID ~ key ~ name ~ deleted
+    def * = id ~ dbID ~ key ~ name ~ seriesType ~ deleted
 
     val seriesByID = for {
       id <- Parameters[String]
       t <- Tags
       a <- Attributes
       s <- this if (s.id is id) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false)
-    } yield (s.name, s.key, t.name, a.name, a.value)
+    } yield (s.name, s.key, t.name, a.name, a.value, s.seriesType)
 
     val seriesByKey = for {
       (key, dbID) <- Parameters[(String, String)]
       t <- Tags
       a <- Attributes
       s <- this if (s.key is key) && (s.dbID is dbID) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false)
-    } yield (s.name, s.id, t.name, a.name, a.value)
+    } yield (s.name, s.id, t.name, a.name, a.value, s.seriesType)
 
 
     def database = foreignKey("DATABASES_FK", dbID, Databases)(_.id)
@@ -105,8 +129,8 @@ trait MetadataComponent {
     (Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).drop
   }
 
-  def saveDatabase(database: domain.Database,org:OrganizationRef)(implicit session: Session) {
-    (Databases.id ~ Databases.name ~ Databases.owner).insert(database.id.toString, database.name, org.id.toString)
+  def saveDatabase(database: domain.Database, org: OrganizationRef)(implicit session: Session) {
+    (Databases.id ~ Databases.name ~ Databases.organization ~ Databases.oauthTTL).insert(database.id.toString, database.name, org.id.toString, database.metadata.oauthTTL)
   }
 
   def deleteDatabase(dbID: UUID)(implicit session: Session) {
@@ -116,7 +140,7 @@ trait MetadataComponent {
 
 
   def getDatabase(dbID: UUID)(implicit session: Session) = {
-    Databases.databaseByID(dbID.toString).firstOption
+    Databases.databaseByID(dbID.toString).firstOption.map(d => domain.Database(dbID, d._1, domain.DatabaseMetadata(d._2)))
   }
 
   def getSeries(seriesID: UUID)(implicit session: Session) = {
@@ -126,7 +150,7 @@ trait MetadataComponent {
     else {
       val tags = (for (s <- list) yield s._3).toSet
       val attributes = (for (s <- list) yield (s._4, s._5)).toMap
-      Some(domain.Series(seriesID, list.head._2, list.head._1, tags, attributes))
+      Some(domain.Series(seriesID, list.head._2, list.head._1, tags, attributes, SeriesType.withName(list.head._6)))
     }
   }
 
@@ -137,13 +161,13 @@ trait MetadataComponent {
         t <- Tags
         a <- Attributes
         s <- Series if (s.id inSet seriesID.map(_.toString)) && (s.deleted is false) && (s.id is a.seriesID) && (s.id is t.seriesID)
-      } yield (s.id, s.key, s.name, t.name, a.name, a.value)).list
+      } yield (s.id, s.key, s.name, t.name, a.name, a.value, s.seriesType)).list
       extractSeries(list).toSet
     }
   }
 
 
-  private def extractSeries(list: List[(String, String, Option[String], String, String, String)]): List[domain.Series] = {
+  private def extractSeries(list: List[(String, String, Option[String], String, String, String, String)]): List[domain.Series] = {
     if (list.isEmpty)
       Nil
     else {
@@ -152,7 +176,7 @@ trait MetadataComponent {
         case (seriesID, data) =>
           val tags = (for (s <- data) yield s._4).toSet
           val attributes = (for (s <- data) yield (s._5, s._6)).toMap
-          domain.Series(UUID.fromString(seriesID), data.head._2, data.head._3, tags, attributes)
+          domain.Series(UUID.fromString(seriesID), data.head._2, data.head._3, tags, attributes, SeriesType.withName(data.head._7))
       }.toList
     }
   }
@@ -166,7 +190,7 @@ trait MetadataComponent {
       val id = UUID.fromString(list.head._2)
       val tags = (for (s <- list) yield s._3).toSet
       val attributes = (for (s <- list) yield (s._4, s._5)).toMap
-      Some(domain.Series(id, key, name, tags, attributes))
+      Some(domain.Series(id, key, name, tags, attributes, SeriesType.withName(list.head._6)))
     }
   }
 
@@ -175,7 +199,7 @@ trait MetadataComponent {
       t <- Tags
       a <- Attributes
       s <- Series if (s.key inSet keys.map(_.toString)) && (s.dbID is dbID.toString) && (s.deleted is false) && (s.id is a.seriesID) && (s.id is t.seriesID)
-    } yield (s.id, s.key, s.name, t.name, a.name, a.value)).list
+    } yield (s.id, s.key, s.name, t.name, a.name, a.value, s.seriesType)).list
     extractSeries(list).toSet
   }
 
@@ -213,7 +237,7 @@ trait MetadataComponent {
       None
     else {
       val seriesID: String = series.id.toString
-      (Series.id ~ Series.dbID ~ Series.key ~ Series.name).insert(seriesID, dbID.toString, series key, series.name)
+      (Series.id ~ Series.dbID ~ Series.key ~ Series.name ~ Series.seriesType).insert(seriesID, dbID.toString, series key, series.name, series.`type`.toString)
       insertTags(seriesID, series.tags)
       insertAttributes(seriesID, series.attributes)
       series
@@ -274,6 +298,14 @@ trait MetadataComponent {
   def deleteAllSeries(dbID: String)(implicit session: Session) {
     val series = for (s <- Series if s.dbID is dbID) yield s.deleted
     series.update(true)
+  }
+
+  def getOrganizationByID(orgID: UUID)(implicit session: Session) = {
+    val orgs = Organizations.organizationByID(orgID.toString).list
+    if (orgs == Nil)
+      None
+    else
+      Some(domain.Organization(orgID, orgs.head._1, orgs.map(o => domain.Database(UUID.fromString(o._2), o._3, domain.DatabaseMetadata(o._4))).toSet))
   }
 }
 

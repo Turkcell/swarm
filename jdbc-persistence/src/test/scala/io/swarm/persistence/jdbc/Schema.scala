@@ -3,9 +3,9 @@ package io.swarm.persistence.jdbc
 import com.fasterxml.uuid.Generators
 import io.swarm.domain._
 import org.junit.runner.RunWith
-import org.scalatest.{ ConfigMap, BeforeAndAfterAllConfigMap, ShouldMatchers, FlatSpec }
+import org.scalatest.{ConfigMap, BeforeAndAfterAllConfigMap, ShouldMatchers, FlatSpec}
 import org.scalatest.junit.JUnitRunner
-import scala.slick.driver.{ ExtendedProfile, HsqldbDriver }
+import scala.slick.driver.{ExtendedProfile, HsqldbDriver}
 import scala.slick.session.Database
 import io.swarm.{UUIDGenerator, domain, Config}
 import org.apache.shiro.crypto.hash.Sha1Hash
@@ -31,13 +31,13 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
 
 
   val series = List(
-    domain.Series(uuidGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1")),
-    domain.Series(uuidGenerator.generate(), "key2", Some("second series"), Set("tag1", "tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3")))
+    domain.Series(uuidGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1"), SeriesType.Long),
+    domain.Series(uuidGenerator.generate(), "key2", Some("second series"), Set("tag1", "tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3"), SeriesType.Float))
 
   override def beforeAll(configMap: ConfigMap) {
     db withSession {
       create
-      databases.foreach(saveDatabase(_,tmpOrganizaion))
+      databases.foreach(saveDatabase(_, tmpOrganizaion))
       series.foreach(saveSeries(_, databases.head.id))
     }
   }
