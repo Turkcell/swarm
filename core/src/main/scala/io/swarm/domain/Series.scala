@@ -50,9 +50,13 @@ trait UserInfo extends Client {
   def credential: String
 }
 
-case class AdminUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean,organizations:Set[Organization]) extends UserInfo
+trait CustomPermissions {
+  def permissions: List[String]
+}
 
-case class DatabaseUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
+case class AdminUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean, organizations: Set[Organization]) extends UserInfo
+
+case class DatabaseUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean, permissions: List[String]) extends UserInfo with CustomPermissions
 
 trait ResourceRef extends IDEntity {
   def name: String
@@ -72,7 +76,7 @@ case class DatabaseInfo(id: UUID, name: String) extends DatabaseRef
 
 case class Database(id: UUID, name: String, metadata: DatabaseMetadata) extends DatabaseRef
 
-case class Device(id: UUID, deviceID: String, databaseInfo: DatabaseInfo, activated: Boolean, disabled: Boolean) extends Client {
+case class Device(id: UUID, deviceID: String, databaseInfo: DatabaseInfo, activated: Boolean, disabled: Boolean, permissions: List[String]) extends Client with CustomPermissions {
   def confirmed = true
 }
 
