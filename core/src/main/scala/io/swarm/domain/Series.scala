@@ -50,7 +50,7 @@ trait UserInfo extends Client {
   def credential: String
 }
 
-case class AdminUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
+case class AdminUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean,organizations:Set[Organization]) extends UserInfo
 
 case class DatabaseUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
 
@@ -66,11 +66,11 @@ case class DatabaseMetadata(val oauthTTL: Long)
 
 case class OrganizationInfo(id: UUID, name: String) extends OrganizationRef
 
-case class Organization(id: UUID, name: String, users: Set[AdminUser]) extends OrganizationRef
+case class Organization(id: UUID, name: String, databases: Set[Database]) extends OrganizationRef
 
 case class DatabaseInfo(id: UUID, name: String) extends DatabaseRef
 
-case class Database(id: UUID, name: String, metadata: DatabaseMetadata, owner: OrganizationInfo) extends DatabaseRef
+case class Database(id: UUID, name: String, metadata: DatabaseMetadata) extends DatabaseRef
 
 case class Device(id: UUID, deviceID: String, databaseInfo: DatabaseInfo, activated: Boolean, disabled: Boolean) extends Client {
   def confirmed = true
@@ -103,11 +103,13 @@ trait ResourceRepository {
 trait ResourceRepositoryComponent {
   val resourceRepository: ResourceRepository
 }
+
 trait DublicateIDEntity extends IOTDBException
 
 object DublicateIDEntity {
   def apply(message: String) = new RuntimeException(message) with DublicateIDEntity
 }
+
 trait ClientRepository {
   def getAdminUser(uuid: UUID): Option[UserInfo]
 

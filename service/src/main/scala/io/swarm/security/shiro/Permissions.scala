@@ -24,11 +24,19 @@ import io.swarm.domain
 object Permissions {
   val allRights = "admin,access,get,put,post,delete".split(",").toSet
 
-  def forOrganization(orgRefs: domain.OrganizationRef*) = {
+  def forOrganizations(orgRefs: domain.OrganizationRef*) = {
+    new CustomPermission(s"organizations:admin,access,get,put,post,delete:${orgRefs.map(_.id).mkString(",")}")
+  }
+
+  def forOrganizations[T<:domain.OrganizationRef](orgRefs: Set[T]) = {
     new CustomPermission(s"organizations:admin,access,get,put,post,delete:${orgRefs.map(_.id).mkString(",")}")
   }
 
   def forDatabases(dbRefs: domain.DatabaseRef*) = {
+    new CustomPermission(s"databases:admin,access,get,put,post,delete:${dbRefs.map(_.id).mkString(",")}")
+  }
+
+  def forDatabases[T<:domain.DatabaseRef](dbRefs: Set[T]) = {
     new CustomPermission(s"databases:admin,access,get,put,post,delete:${dbRefs.map(_.id).mkString(",")}")
   }
 

@@ -26,6 +26,10 @@ import io.swarm.Config
 import scala.concurrent._
 import ExecutionContext.Implicits.global
 import scala.Some
+import org.apache.shiro.subject.PrincipalCollection
+import org.apache.shiro.authz.{SimpleAuthorizationInfo, AuthorizationInfo}
+import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+import scala.collection.JavaConverters.asJavaCollectionConverter
 
 /**
  * Created by Anil Chalil on 11/14/13.
@@ -113,10 +117,19 @@ trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretRealmBaseComp
 trait OrganizationRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
-  trait OrganizationRealm extends ClientIDSecretBearerRealmBase {
+  object OrganizationRealm extends ClientIDSecretBearerRealmBase {
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Organization
       case _ => false
+    }
+
+    override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
+      val info = new SimpleAuthorizationInfo()
+      val org = principals.byType(classOf[Organization]).asScala.head
+      info.addObjectPermission(Permissions.forOrganizations(org))
+      info.addObjectPermission(Permissions.forDatabases(org.databases))
+      info.addRoles(List(Roles.DatabaseAdmin, Roles.OrganizationAdmin).asJavaCollection)
+      info
     }
   }
 
@@ -206,7 +219,7 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
 trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent =>
 
-  trait AdminUserRealm extends UserInfoRealmBase {
+  object AdminUserRealm extends UserInfoRealmBase {
     override def supports(token: AuthenticationToken) = token match {
       case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.Admin
       case t: OauthBearerToken => t.authPrincipalType == AuthPrincipalType.Admin
@@ -216,6 +229,15 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
     def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getAdminUserByEmail(principal)
 
     def getPrincipalByUsername(principal: String): Option[UserInfo] = clientRepository.getAdminUserByUsername(principal)
+
+    override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
+      val info = new SimpleAuthorizationInfo()
+      val user = principals.byType(classOf[AdminUser]).asScala.head
+      info.addObjectPermission(Permissions.forOrganizations(user.organizations))
+      info.addObjectPermission(Permissions.forDatabases(user.organizations.flatMap(_.databases)))
+      info.addRoles(List(Roles.AdminUser, Roles.DatabaseAdmin, Roles.OrganizationAdmin).asJavaCollection)
+      info
+    }
   }
 
 }

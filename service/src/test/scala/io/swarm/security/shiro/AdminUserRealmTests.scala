@@ -34,33 +34,30 @@ import scala.collection.JavaConverters._
 import io.swarm.domain.Client
 
 class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
-  val realm = new AdminUserRealm {
-    def doGetAuthorizationInfo(principals: PrincipalCollection) = null
-  }
+  val realm = AdminUserRealm
   realm.setCredentialsMatcher(new UsernamePasswordBearerCredentialsMatcher(new Sha1CredentialsMatcher))
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
-  val user = AdminUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", new Sha1Hash("test", Config.userInfoHash).toHex(), true, true, false)
   val userPass = "test"
-  clientRepository.saveAdminUser(user)
-  val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, user.id), 0, 0)
-  val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, user.id), 100, 0)
+  clientRepository.saveAdminUser(TestData.user)
+  val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, TestData.user.id), 0, 0)
+  val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, TestData.user.id), 100, 0)
 
   def disable {
-    clientRepository.upsertAdminUser(user.copy(disabled = true))
+    clientRepository.upsertAdminUser(TestData.user.copy(disabled = true))
   }
 
   def passivate {
-    clientRepository.upsertAdminUser(user.copy(activated = false))
+    clientRepository.upsertAdminUser(TestData.user.copy(activated = false))
   }
 
   def revert(user: Client) {
     clientRepository.upsertAdminUser(user.asInstanceOf[UserInfo])
   }
 
-  "AdminUser" should behave like basic(new UsernamePasswordToken(user.username, userPass, AuthPrincipalType.Admin), new UsernamePasswordToken(user.username, "wrong pass", AuthPrincipalType.Admin), new UsernamePasswordToken("wrong", "wrong", AuthPrincipalType.Admin), validToken, expiredToken)
-  "AdminUser" should behave like client(user, validToken)
-  "AdminUser" should behave like user(user, userPass, AuthPrincipalType.Admin)
+  "AdminUser" should behave like basic(new UsernamePasswordToken(TestData.user.username, userPass, AuthPrincipalType.Admin), new UsernamePasswordToken(TestData.user.username, "wrong pass", AuthPrincipalType.Admin), new UsernamePasswordToken("wrong", "wrong", AuthPrincipalType.Admin), validToken, expiredToken)
+  "AdminUser" should behave like client(TestData.user, validToken)
+  "AdminUser" should behave like user(TestData.user, userPass, AuthPrincipalType.Admin)
 }

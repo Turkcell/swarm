@@ -4,6 +4,7 @@ import scala.slick.driver.ExtendedProfile
 import io.swarm.domain
 import java.util.UUID
 import scala.slick.jdbc.{GetResult, StaticQuery => Q}
+import io.swarm.domain.OrganizationRef
 
 /**
  * Created by capacman on 10/25/13.
@@ -104,8 +105,8 @@ trait MetadataComponent {
     (Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).drop
   }
 
-  def saveDatabase(database: domain.Database)(implicit session: Session) {
-    (Databases.id ~ Databases.name ~ Databases.owner).insert(database.id.toString, database.name, database.owner.id.toString)
+  def saveDatabase(database: domain.Database,org:OrganizationRef)(implicit session: Session) {
+    (Databases.id ~ Databases.name ~ Databases.owner).insert(database.id.toString, database.name, org.id.toString)
   }
 
   def deleteDatabase(dbID: UUID)(implicit session: Session) {

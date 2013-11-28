@@ -7,9 +7,8 @@ import org.scalatest.{ ConfigMap, BeforeAndAfterAllConfigMap, ShouldMatchers, Fl
 import org.scalatest.junit.JUnitRunner
 import scala.slick.driver.{ ExtendedProfile, HsqldbDriver }
 import scala.slick.session.Database
-import io.swarm.domain
+import io.swarm.{UUIDGenerator, domain, Config}
 import org.apache.shiro.crypto.hash.Sha1Hash
-import io.swarm.Config
 
 /**
  * Created by capacman on 10/26/13.
@@ -26,10 +25,11 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   import Database.threadLocalSession
 
   val uuidGenerator = Generators.timeBasedGenerator()
+  val databases = List(domain.Database(uuidGenerator.generate(), "db1", DatabaseMetadata(0)), domain.Database(uuidGenerator.generate(), "db2", DatabaseMetadata(0)))
+  val tmpOrganizaion = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", databases.toSet)
+  val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", new Sha1Hash("test", Config.userInfoHash).toHex(), true, true, false, Set(tmpOrganizaion))
 
-  val tmpUser = AdminUser(uuidGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false)
-  val tmpOrganizaion = OrganizationInfo(uuidGenerator.generate(), "tmp")
-  val databases = List(domain.Database(uuidGenerator.generate(), "db1", DatabaseMetadata(0), tmpOrganizaion), domain.Database(uuidGenerator.generate(), "db2", DatabaseMetadata(0), tmpOrganizaion))
+
   val series = List(
     domain.Series(uuidGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1")),
     domain.Series(uuidGenerator.generate(), "key2", Some("second series"), Set("tag1", "tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3")))
@@ -37,7 +37,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   override def beforeAll(configMap: ConfigMap) {
     db withSession {
       create
-      databases.foreach(saveDatabase)
+      databases.foreach(saveDatabase(_,tmpOrganizaion))
       series.foreach(saveSeries(_, databases.head.id))
     }
   }
