@@ -25,7 +25,6 @@ import org.joda.time.DateTime
 import java.nio.BufferUnderflowException
 import domain._
 import java.lang.IllegalArgumentException
-import org.apache.shiro.crypto.hash.Sha1Hash
 import io.swarm.security.shiro._
 import io.swarm.domain.OrganizationInfo
 import io.swarm.domain.DatabaseUser
@@ -41,8 +40,8 @@ import io.swarm.domain.Device
 class TokenTests extends FlatSpec with ShouldMatchers {
   val database = Database(UUIDGenerator.secretGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24))
   val org = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", Set(database))
-  val tmpAdminUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false,Set(org))
-  val tmpDBUser = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false,Set())
+  val tmpAdminUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false,Set(org))
+  val tmpDBUser = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false,Set())
   "token " should " construct an OauthBearerToken" in {
     val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, TokenCategory.Access, DateTime.now(), DateTime.now(), 0, 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
     val direct = OauthBearerToken(tokenInfo)

@@ -60,7 +60,7 @@ object OauthBearerToken {
   private[this] def sha(tokenCategory: TokenCategory, principalType: AuthPrincipalType, expires: Long, uuid: UUID, principalUUID: UUID) = (tokenCategory.prefix + principalType.prefix + uuid + Config.tokenSecretSalt + expires + principalUUID).sha
 
   def apply(tokenInfo: TokenInfo) = {
-    var l = currentOauthTokenBaseLength
+    var l = HashedAlgorithm.currentOauthTokenBaseLength
     if (tokenInfo.tokenCategory.expires) {
       l += 8
     }
@@ -91,7 +91,7 @@ object OauthBearerToken {
         throw ExpiredTokenException(delta)
       val principalID = new UUID(bb.getLong, bb.getLong)
       val shaExpected = sha(category, principleType, expires, tokenUUID, principalID)
-      val shaActual = new Array[Byte](currentSHALength)
+      val shaActual = new Array[Byte](HashedAlgorithm.currentSHALength)
       bb.get(shaActual)
       if (shaExpected.sameElements(shaActual)) {
         new OauthBearerToken(token, principleType, category, tokenUUID, principalID, expires)

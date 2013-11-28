@@ -7,8 +7,8 @@ import org.scalatest.{ConfigMap, BeforeAndAfterAllConfigMap, ShouldMatchers, Fla
 import org.scalatest.junit.JUnitRunner
 import scala.slick.driver.{ExtendedProfile, HsqldbDriver}
 import scala.slick.session.Database
-import io.swarm.{UUIDGenerator, domain, Config}
-import org.apache.shiro.crypto.hash.Sha1Hash
+import io.swarm.{UUIDGenerator, domain}
+import io.swarm.security.HashedAlgorithm
 
 /**
  * Created by capacman on 10/26/13.
@@ -27,7 +27,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   val uuidGenerator = Generators.timeBasedGenerator()
   val databases = List(domain.Database(uuidGenerator.generate(), "db1", DatabaseMetadata(0)), domain.Database(uuidGenerator.generate(), "db2", DatabaseMetadata(0)))
   val organization = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", databases.toSet)
-  val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", new Sha1Hash("test", Config.userInfoHash).toHex(), true, true, false, Set(organization))
+  val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(organization))
 
 
   val series = List(
@@ -110,7 +110,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   it should "throw DublicateIDEntity for duplicate database" in {
     intercept[DuplicateIDEntity] {
       db withSession {
-        saveDatabase(databases.head,organization)
+        saveDatabase(databases.head, organization)
       }
     }
   }
