@@ -39,8 +39,10 @@ import io.swarm.domain.Device
  */
 @RunWith(classOf[JUnitRunner])
 class TokenTests extends FlatSpec with ShouldMatchers {
-  val tmpAdminUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false)
-  val tmpDBUser = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false)
+  val database = Database(UUIDGenerator.secretGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24))
+  val org = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", Set(database))
+  val tmpAdminUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false,Set(org))
+  val tmpDBUser = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "anil", "halil", "user1", "user@user.com", new Sha1Hash("mypass", Config.userInfoHash).toBase64, activated = true, confirmed = true, disabled = false,Set())
   "token " should " construct an OauthBearerToken" in {
     val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, TokenCategory.Access, DateTime.now(), DateTime.now(), 0, 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
     val direct = OauthBearerToken(tokenInfo)
@@ -95,7 +97,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
     val org = ClientID(OrganizationInfo(UUIDGenerator.secretGenerator.generate(), "org"))
     val dbInfo = DatabaseInfo(UUIDGenerator.secretGenerator.generate(), "db")
     val db = ClientID(dbInfo)
-    val dev = ClientID(Device(UUIDGenerator.secretGenerator.generate(), "device", dbInfo, true, false))
+    val dev = ClientID(Device(UUIDGenerator.secretGenerator.generate(), "device", dbInfo, true, false,Set()))
 
     org shouldBe ClientID(org.id)
     db shouldBe ClientID(db.id)
