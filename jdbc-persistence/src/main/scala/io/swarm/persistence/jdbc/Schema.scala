@@ -17,8 +17,8 @@ trait Profile {
 trait MetadataComponent {
   this: Profile =>
   //...to be able import profile.simple._
-  import profile.simple._
 
+  import profile.simple._
 
 
   // Definition of the Organizations table
@@ -122,11 +122,11 @@ trait MetadataComponent {
   }
 
   def create(implicit session: Session) {
-    (Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).create
+    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).create
   }
 
   def drop(implicit session: Session) {
-    (Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).drop
+    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).drop
   }
 
   def saveDatabase(database: domain.Database, org: OrganizationRef)(implicit session: Session) {
@@ -306,6 +306,11 @@ trait MetadataComponent {
       None
     else
       Some(domain.Organization(orgID, orgs.head._1, orgs.map(o => domain.Database(UUID.fromString(o._2), o._3, domain.DatabaseMetadata(o._4))).toSet))
+  }
+
+  def saveOrganization(orgRef: OrganizationRef)(implicit session: Session) = {
+    (Organizations.id ~ Organizations.name).insert(orgRef.id.toString, orgRef.name)
+    orgRef
   }
 }
 

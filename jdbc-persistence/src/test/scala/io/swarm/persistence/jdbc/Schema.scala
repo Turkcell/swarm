@@ -26,8 +26,8 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
 
   val uuidGenerator = Generators.timeBasedGenerator()
   val databases = List(domain.Database(uuidGenerator.generate(), "db1", DatabaseMetadata(0)), domain.Database(uuidGenerator.generate(), "db2", DatabaseMetadata(0)))
-  val tmpOrganizaion = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", databases.toSet)
-  val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", new Sha1Hash("test", Config.userInfoHash).toHex(), true, true, false, Set(tmpOrganizaion))
+  val organization = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", databases.toSet)
+  val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", new Sha1Hash("test", Config.userInfoHash).toHex(), true, true, false, Set(organization))
 
 
   val series = List(
@@ -37,7 +37,8 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   override def beforeAll(configMap: ConfigMap) {
     db withSession {
       create
-      databases.foreach(saveDatabase(_, tmpOrganizaion))
+      saveOrganization(organization)
+      databases.foreach(saveDatabase(_, organization))
       series.foreach(saveSeries(_, databases.head.id))
     }
   }
@@ -57,14 +58,14 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  "schema " should " get series with key" in {
+  it should " get series with key" in {
     db withSession {
       getSeriesByKey(series.head.key, databases.head.id) should be(Some(series.head))
       getSeriesByKey(series.head.key, databases(1).id) should be(None)
     }
   }
 
-  "schema " should " get series by tags" in {
+  it should " get series by tags" in {
     db withSession {
       getSeriesByTags(Set("tag1"), databases.head.id) should have size 2
       getSeriesByTags(Set("tag1", "tag2"), databases.head.id) should have size 1
@@ -72,7 +73,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  "schema " should " get series by attributes" in {
+  it should " get series by attributes" in {
     db withSession {
       getSeriesByAttributes(Map("attr1" -> "val1"), databases.head.id) should have size 1
       getSeriesByAttributes(Map("attr2" -> "val2"), databases.head.id) should have size 1
@@ -80,7 +81,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  "schema " should " get series by intersection" in {
+  it should " get series by intersection" in {
     db withSession {
       getSeriesByAttributes(Map("attr1" -> "val1"), databases.head.id) should have size 1
       getSeriesIntersection(Set(), Set(), Set("tag1"), Map("attr1" -> "val1"), databases.head.id) should have size 1
@@ -88,6 +89,20 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
       getSeriesIntersection(Set(), Set("key1"), Set("tag1"), Map(), databases.head.id) should have size 1
       getSeriesIntersection(Set(), Set("key2"), Set("tag1"), Map(), databases.head.id) should have size 1
       getSeriesIntersection(Set(), Set("key1"), Set("tag2"), Map(), databases.head.id) should have size 0
+    }
+  }
+
+  it should "get database by id" in {
+    db withSession {
+      getDatabase(databases.head.id) should be(Some(databases.head))
+      getDatabase(UUIDGenerator.secretGenerator.generate()) should be(None)
+    }
+  }
+
+  it should "get organization by id" in {
+    db withSession {
+      getOrganizationByID(organization.id) should be(Some(organization))
+      getOrganizationByID(UUIDGenerator.secretGenerator.generate()) should be(None)
     }
   }
 }
