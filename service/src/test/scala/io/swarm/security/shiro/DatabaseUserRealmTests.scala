@@ -23,13 +23,9 @@ import org.scalatest.FlatSpec
 import org.scalatest.ShouldMatchers
 import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConverters._
-import org.apache.shiro.authc.credential.Sha1CredentialsMatcher
-import org.apache.shiro.subject.PrincipalCollection
 import org.apache.shiro.SecurityUtils
-import io.swarm.security.AuthPrincipalType
-import io.swarm.{UUIDGenerator, Config}
-import org.apache.shiro.crypto.hash.Sha1Hash
-import io.swarm.security.TokenCategory
+import io.swarm.security.{HashedAlgorithm, AuthPrincipalType, TokenCategory}
+import io.swarm.UUIDGenerator
 import io.swarm.domain.DatabaseUser
 import io.swarm.domain.UserInfo
 import io.swarm.domain.Client
@@ -40,12 +36,11 @@ import io.swarm.domain.Client
 @RunWith(classOf[JUnitRunner])
 class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
   val realm = DatabaseUserRealm
-  realm.setCredentialsMatcher(new UsernamePasswordBearerCredentialsMatcher(new Sha1CredentialsMatcher))
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
-  val user = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", new Sha1Hash("test", Config.userInfoHash).toHex(), true, true, false,Set())
+  val user = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set())
   val userPass = "test"
   clientRepository.saveDatabaseUser(user)
   val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 0, 0)

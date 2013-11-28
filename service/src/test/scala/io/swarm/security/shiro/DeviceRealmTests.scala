@@ -18,7 +18,6 @@ package io.swarm.security.shiro
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import org.apache.shiro.subject.PrincipalCollection
 import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
@@ -26,20 +25,12 @@ import io.swarm.security.TokenCategory
 import io.swarm.security.AuthPrincipalType
 import io.swarm.domain.Client
 import io.swarm.domain.Device
-import io.swarm.domain.AdminUser
 import io.swarm.UUIDGenerator
-import org.apache.shiro.crypto.hash.Sha1Hash
-import io.swarm.Config
-import io.swarm.domain.Database
-import io.swarm.domain.Organization
-import io.swarm.domain.DatabaseMetadata
-import io.swarm.domain.OrganizationInfo
 import io.swarm.domain.DatabaseInfo
 import scala.collection.JavaConverters._
 
 class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
   val realm = DeviceRealm
-  realm.setCredentialsMatcher(new ClientIDSecretBearerCredentialsMatcher)
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)

@@ -18,24 +18,17 @@ package io.swarm.security.shiro
 
 import org.scalatest.FlatSpec
 import org.scalatest.ShouldMatchers
-import org.apache.shiro.subject.PrincipalCollection
-import org.apache.shiro.authc.credential.Sha1CredentialsMatcher
 import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
 import io.swarm.security.TokenCategory
 import io.swarm.security.AuthPrincipalType
 import io.swarm.domain.UserInfo
-import io.swarm.domain.AdminUser
-import io.swarm.UUIDGenerator
-import org.apache.shiro.crypto.hash.Sha1Hash
-import io.swarm.Config
 import scala.collection.JavaConverters._
 import io.swarm.domain.Client
 
 class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
   val realm = AdminUserRealm
-  realm.setCredentialsMatcher(new UsernamePasswordBearerCredentialsMatcher(new Sha1CredentialsMatcher))
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)

@@ -20,7 +20,7 @@ import org.apache.shiro.realm.{AuthorizingRealm, Realm}
 import org.apache.shiro.authc._
 import io.swarm.security._
 import scala.concurrent.duration._
-import org.apache.shiro.authc.credential.CredentialsMatcher
+import org.apache.shiro.authc.credential.{HashedCredentialsMatcher, CredentialsMatcher}
 import io.swarm.domain._
 import io.swarm.Config
 import scala.concurrent._
@@ -118,6 +118,11 @@ trait OrganizationRealmComponent extends ClientIDSecretBearerRealmBaseComponent 
   this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
   object OrganizationRealm extends ClientIDSecretBearerRealmBase {
+    //initialization block
+    {
+      setCredentialsMatcher(new ClientIDSecretBearerCredentialsMatcher)
+    }
+
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Organization
       case _ => false
@@ -139,6 +144,11 @@ trait DatabaseRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
   object DatabaseRealm extends ClientIDSecretBearerRealmBase {
+    //initialization block
+    {
+      setCredentialsMatcher(new ClientIDSecretBearerCredentialsMatcher)
+    }
+
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Database
       case _ => false
@@ -159,6 +169,11 @@ trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerR
   this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
   object DeviceRealm extends AuthorizingRealm with BearerRealmBase with ClientIDSecretRealmBase {
+    //initialization block
+    {
+      setCredentialsMatcher(new ClientIDSecretBearerCredentialsMatcher)
+    }
+
     def checkClient(client: Client) {
       if (!client.activated)
         throw new LockedAccountException("client is not activated")
@@ -236,6 +251,11 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent =>
 
   object AdminUserRealm extends UserInfoRealmBase {
+    //initialization block
+    {
+      setCredentialsMatcher(new UsernamePasswordBearerCredentialsMatcher(new HashedCredentialsMatcher(HashedAlgorithm.algorithmName)))
+    }
+
     override def supports(token: AuthenticationToken) = token match {
       case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.Admin
       case t: OauthBearerToken => t.authPrincipalType == AuthPrincipalType.Admin
@@ -262,6 +282,11 @@ trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent =>
 
   object DatabaseUserRealm extends UserInfoRealmBase {
+    //initialization block
+    {
+      setCredentialsMatcher(new UsernamePasswordBearerCredentialsMatcher(new HashedCredentialsMatcher(HashedAlgorithm.algorithmName)))
+    }
+
     override def supports(token: AuthenticationToken) = token match {
       case t: UsernamePasswordToken => t.principalType == AuthPrincipalType.DatabaseUser
       case t: OauthBearerToken => t.authPrincipalType == AuthPrincipalType.DatabaseUser

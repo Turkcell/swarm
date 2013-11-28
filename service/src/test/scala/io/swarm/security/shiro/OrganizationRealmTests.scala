@@ -17,15 +17,12 @@
 package io.swarm.security.shiro
 
 import org.scalatest._
-import org.apache.shiro.subject.PrincipalCollection
 import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
-import io.swarm.{Config, UUIDGenerator}
-import org.apache.shiro.crypto.hash.Sha1Hash
+import io.swarm.UUIDGenerator
 import io.swarm.security._
 import io.swarm.domain.Organization
-import io.swarm.domain.AdminUser
 import scala.collection.JavaConverters._
 
 /**
@@ -33,7 +30,6 @@ import scala.collection.JavaConverters._
  */
 class OrganizationRealmTests extends FlatSpec with ShouldMatchers with OrganizationRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors {
   val realm = OrganizationRealm
-  realm.setCredentialsMatcher(new ClientIDSecretBearerCredentialsMatcher)
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
