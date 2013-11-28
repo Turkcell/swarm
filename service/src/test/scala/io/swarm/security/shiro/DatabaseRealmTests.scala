@@ -36,9 +36,7 @@ import io.swarm.domain.DatabaseMetadata
  * Created by Anil Chalil on 11/19/13.
  */
 class DatabaseRealmTests extends FlatSpec with ShouldMatchers with DatabaseRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors {
-  val realm = new DatabaseRealm {
-    def doGetAuthorizationInfo(principals: PrincipalCollection) = null
-  }
+  val realm = DatabaseRealm
   realm.setCredentialsMatcher(new ClientIDSecretBearerCredentialsMatcher)
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)

@@ -138,10 +138,18 @@ trait OrganizationRealmComponent extends ClientIDSecretBearerRealmBaseComponent 
 trait DatabaseRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
   this: TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent =>
 
-  trait DatabaseRealm extends ClientIDSecretBearerRealmBase {
+  object DatabaseRealm extends ClientIDSecretBearerRealmBase {
     override def supports(token: AuthenticationToken) = token match {
       case t: PrincipalAuthenticationToken => t.authPrincipalType == AuthPrincipalType.Database
       case _ => false
+    }
+
+    override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
+      val info = new SimpleAuthorizationInfo()
+      val database = principals.byType(classOf[Database]).asScala.head
+      info.addObjectPermission(Permissions.forDatabases(database))
+      info.addRoles(List(Roles.DatabaseAdmin).asJavaCollection)
+      info
     }
   }
 
