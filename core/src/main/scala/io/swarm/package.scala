@@ -32,6 +32,10 @@ package object swarm {
   val kClockOffset = 0x01b21dd213814000L
   val kClockMultiplierL = 10000L
 
+  //for sha1
+  val currentSHALength = 160 / 8
+  val currentOauthTokenBaseLength = 16 + 16 + 20
+
 
   final class RichUUID(val self: UUID) {
 

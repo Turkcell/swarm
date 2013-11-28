@@ -59,7 +59,7 @@ object ClientSecret {
   def apply(principalType: AuthPrincipalType) = {
     if (principalType == AuthPrincipalType.Admin || principalType == AuthPrincipalType.DatabaseUser)
       throw new IllegalArgumentException(s"could not generate ClientSecret for $principalType")
-    val bb = ByteBuffer.allocate(20)
+    val bb = ByteBuffer.allocate(currentSHALength)
     bb.put((System.currentTimeMillis() + Config.clientTokenSecretSalt + UUIDGenerator.secretGenerator.generate()).sha)
     new ClientSecret(principalType.base64Prefix + bb.base64URLSafeString, principalType)
   }
