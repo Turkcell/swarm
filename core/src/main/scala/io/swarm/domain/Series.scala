@@ -29,7 +29,7 @@ object SeriesType extends Enumeration {
   val Long, Float = Value
 }
 
-case class Series(id: UUID, key: String, name: Option[String], tags: Set[String], attributes: Map[String, String],`type`:SeriesType.SeriesType)
+case class Series(id: UUID, key: String, name: Option[String], tags: Set[String], attributes: Map[String, String], `type`: SeriesType.SeriesType)
 
 trait IDEntity {
   def id: UUID
@@ -76,13 +76,17 @@ case class DatabaseMetadata(val oauthTTL: Long)
 
 case class OrganizationInfo(id: UUID, name: String) extends OrganizationRef
 
-case class Organization(id: UUID, name: String, databases: Set[Database]) extends OrganizationRef
+case class Organization(id: UUID, name: String, databases: Set[Database]) extends OrganizationRef {
+  def organizationInfo = new OrganizationInfo(id, name)
+}
 
 case class DatabaseInfo(id: UUID, name: String) extends DatabaseRef
 
-case class Database(id: UUID, name: String, metadata: DatabaseMetadata) extends DatabaseRef
+case class Database(id: UUID, name: String, metadata: DatabaseMetadata) extends DatabaseRef {
+  def databaseInfo = new DatabaseInfo(id, name)
+}
 
-case class Device(id: UUID, deviceID: String, databaseInfo: DatabaseInfo, activated: Boolean, disabled: Boolean, permissions: Set[String]) extends Client with CustomPermissions {
+case class Device(id: UUID, deviceID: String, databaseRef: DatabaseRef, activated: Boolean, disabled: Boolean, permissions: Set[String]) extends Client with CustomPermissions {
   def confirmed = true
 }
 
@@ -118,6 +122,7 @@ trait DuplicateIDEntity extends IOTDBException
 
 object DuplicateIDEntity {
   def apply(message: String) = new RuntimeException(message) with DuplicateIDEntity
+
   def apply(t: Throwable) = new RuntimeException(t) with DuplicateIDEntity
 }
 

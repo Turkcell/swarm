@@ -33,6 +33,8 @@ trait MetadataComponent {
     // Every table needs a * projection with the same type as the table's type parameter
     def * = id ~ name ~ deleted
 
+    def index_name = index("idx_orgname", (name), unique = false)
+
     val organizationByID = for {
       id <- Parameters[String]
       d <- Databases
@@ -61,6 +63,10 @@ trait MetadataComponent {
 
     // Every table needs a * projection with the same type as the table's type parameter
     def * = id ~ name ~ organization ~ oauthTTL ~ deleted
+
+    def index_name = index("idx_dbname", (name), unique = false)
+
+    def fk_org = foreignKey("database_org_fk", organization, Organizations)(_.id)
 
     val databaseByID = for {
       id <- Parameters[String]
@@ -92,6 +98,10 @@ trait MetadataComponent {
     // Every table needs a * projection with the same type as the table's type parameter
     def * = id ~ dbID ~ key ~ name ~ seriesType ~ deleted
 
+    def index_key = index("idx_serieskey", (key), unique = false)
+
+    def fk_db = foreignKey("series_db_fk", dbID, Databases)(_.id)
+
     val seriesByID = for {
       id <- Parameters[String]
       t <- Tags
@@ -105,9 +115,6 @@ trait MetadataComponent {
       a <- Attributes
       s <- this if (s.key is key) && (s.dbID is dbID) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false)
     } yield (s.name, s.id, t.name, a.name, a.value, s.seriesType)
-
-
-    def database = foreignKey("DATABASES_FK", dbID, Databases)(_.id)
   }
 
   object Tags extends Table[(String, String)]("SERIES_TAGS") {
@@ -117,7 +124,9 @@ trait MetadataComponent {
 
     def * = seriesID ~ name
 
-    def series = foreignKey("SERIES_TAG_FK", seriesID, Series)(_.id)
+    def fk_series = foreignKey("series_tag_fk", seriesID, Series)(_.id)
+
+    def index_name = index("idx_tagsname", (name), unique = false)
   }
 
   object Attributes extends Table[(String, String, String)]("SERIES_ATTRIBUTES") {
@@ -129,11 +138,13 @@ trait MetadataComponent {
 
     def * = seriesID ~ name ~ value
 
-    def series = foreignKey("SERIES_ATTRIBUTES_FK", seriesID, Series)(_.id)
+    def fk_series = foreignKey("series_attributes_fk", seriesID, Series)(_.id)
+
+    def index_name = index("idx_attributesname", (name), unique = false)
   }
 
-  object Devices extends Table[(String, String, String, Boolean, Boolean)]("DEVICES") {
-    def id = column[String]("DEVICE_ID")
+  object Devices extends Table[(String, String, String, Boolean, Boolean, Boolean)]("DEVICES") {
+    def id = column[String]("DEVICE_ID", O.PrimaryKey)
 
     def deviceID = column[String]("DEVICE_OWN_ID")
 
@@ -143,16 +154,45 @@ trait MetadataComponent {
 
     def disabled = column[Boolean]("DISABLED")
 
-    def * = id ~ deviceID ~ dbID ~ activated ~ disabled
+    def deleted = column[Boolean]("DELETED", O.Default(false))
 
+    def * = id ~ deviceID ~ dbID ~ activated ~ disabled ~ deleted
+
+    def fk_database = foreignKey("devices_db_fk", dbID, Databases)(_.id)
+
+    def index_deviceID = index("idx_devicesdeviceID", (deviceID), unique = false)
+
+    val deviceByID = for {
+      id <- Parameters[String]
+      db <- Databases
+      p <- DevicePermissions
+      d <- this if (d.id is id) && (d.deleted is false) && (db.id is d.dbID) && (p.id is d.id)
+    } yield (d.deviceID, d.activated, d.disabled, p.devicePermission, db.id, db.name)
+
+    val deviceByDeviceID = for {
+      deviceID <- Parameters[String]
+      db <- Databases
+      p <- DevicePermissions
+      d <- this if (d.deviceID is deviceID) && (d.deleted is false) && (db.id is d.dbID) && (p.id is d.id)
+    } yield (d.id, d.activated, d.disabled, p.devicePermission, db.id, db.name)
+  }
+
+  object DevicePermissions extends Table[(String, String)]("DEVICE_PERMISSIONS") {
+    def id = column[String]("DEVICE_ID")
+
+    def devicePermission = column[String]("DEVICE_PERMISSION")
+
+    def * = id ~ devicePermission
+
+    def fk_device = foreignKey("device_permissions_device_fk", id, Devices)(_.id)
   }
 
   def create(implicit session: Session) {
-    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).create
+    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl ++ Devices.ddl ++ DevicePermissions.ddl).create
   }
 
   def drop(implicit session: Session) {
-    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl).drop
+    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl ++ Devices.ddl ++ DevicePermissions.ddl).drop
   }
 
   def saveDatabase(database: domain.Database, org: OrganizationRef)(implicit session: Session) {
@@ -353,7 +393,34 @@ trait MetadataComponent {
       (Organizations.id ~ Organizations.name).insert(orgRef.id.toString, orgRef.name)
   }
 
+  def getDeviceByID(id: UUID)(implicit session: Session) = {
+    val devices = Devices.deviceByID(id.toString).list
+    if (devices == Nil)
+      None
+    else {
+      val head = devices.head
+      Some(domain.Device(id, head._1, domain.DatabaseInfo(UUID.fromString(head._5), head._6), head._2, head._3, devices.map(_._4).toSet))
+    }
+  }
 
+  def getDeviceByDeviceID(deviceID: String)(implicit session: Session) = {
+    val devices = Devices.deviceByDeviceID(deviceID).list
+    if (devices == Nil)
+      None
+    else {
+      val head = devices.head
+      Some(domain.Device(UUID.fromString(head._1), deviceID, domain.DatabaseInfo(UUID.fromString(head._5), head._6), head._2, head._3, devices.map(_._4).toSet))
+    }
+  }
+
+  def saveDevice(device: domain.Device)(implicit session: Session) = {
+    if (Devices.deviceByDeviceID(device.deviceID).firstOption.isDefined)
+      throw domain.DuplicateIDEntity(s"device with ${device.deviceID} is already defined!")
+    else {
+      (Devices.id ~ Devices.deviceID ~ Devices.activated ~ Devices.disabled ~ Devices.dbID).insert(device.id.toString, device.deviceID, device.activated, device.disabled, device.databaseRef.id.toString)
+      device.permissions.foreach(p => (DevicePermissions.id ~ DevicePermissions.devicePermission).insert(device.id.toString, p))
+    }
+  }
 }
 
 

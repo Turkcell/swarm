@@ -48,7 +48,7 @@ trait TokenRepositoryComponent {
       if (principal == null)
         TokenCategoryValue.longTokenAge
       else {
-        val dbMetadata = if (principal.`type` == AuthPrincipalType.Database) resourceRepository.getDatabaseMetadata(principal.uuid) else clientRepository.getDevice(principal.uuid).flatMap(d => resourceRepository.getDatabaseMetadata(d.databaseInfo.id))
+        val dbMetadata = if (principal.`type` == AuthPrincipalType.Database) resourceRepository.getDatabaseMetadata(principal.uuid) else clientRepository.getDevice(principal.uuid).flatMap(d => resourceRepository.getDatabaseMetadata(d.databaseRef.id))
         dbMetadata.map(meta => if (meta.oauthTTL == 0) TokenCategoryValue.longTokenAge else meta.oauthTTL).getOrElse(TokenCategoryValue.longTokenAge)
       }
     }

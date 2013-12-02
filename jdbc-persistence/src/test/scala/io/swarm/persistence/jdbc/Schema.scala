@@ -28,6 +28,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   val databases = List(domain.Database(uuidGenerator.generate(), "db1", DatabaseMetadata(0)), domain.Database(uuidGenerator.generate(), "db2", DatabaseMetadata(0)))
   val organization = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", databases.toSet)
   val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(organization))
+  val devices = List(Device(uuidGenerator.generate(), "device1", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2")), Device(uuidGenerator.generate(), "device2", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2")))
 
 
   val series = List(
@@ -40,6 +41,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
       saveOrganization(organization)
       databases.foreach(saveDatabase(_, organization))
       series.foreach(saveSeries(_, databases.head.id))
+      devices.foreach(saveDevice)
     }
   }
 
@@ -126,6 +128,26 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     intercept[DuplicateIDEntity] {
       db withSession {
         saveOrganization(organization)
+      }
+    }
+  }
+
+  it should "get device by id " in {
+    db withSession {
+      getDeviceByID(devices.head.id) should be(Some(devices.head))
+    }
+  }
+
+  it should "get device by deviceId " in {
+    db withSession {
+      getDeviceByDeviceID(devices.head.deviceID) should be(Some(devices.head))
+    }
+  }
+
+  it should "throw DublicateIDEntity for duplicate devices" in {
+    intercept[DuplicateIDEntity] {
+      db withSession {
+        saveDevice(devices.head)
       }
     }
   }
