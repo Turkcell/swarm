@@ -16,7 +16,7 @@ import io.swarm.security.HashedAlgorithm
 
 trait HSQLInMemoryDB {
   val profile: ExtendedProfile = HsqldbDriver
-  lazy val db = Database.forURL("jdbc:hsqldb:mem:mymemdb", driver = "org.hsqldb.jdbc.JDBCDriver")
+  lazy val db = Database.forURL("jdbc:hsqldb:mem:mymemdb", driver = "org.hsqldb.jdbc.JDBCDriver", user = "sa", password = "sa")
 }
 
 @RunWith(classOf[JUnitRunner])
@@ -42,6 +42,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
       databases.foreach(saveDatabase(_, organization))
       series.foreach(saveSeries(_, databases.head.id))
       devices.foreach(saveDevice)
+      saveAdminUser(tmpUser)
     }
   }
 
@@ -148,6 +149,32 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     intercept[DuplicateIDEntity] {
       db withSession {
         saveDevice(devices.head)
+      }
+    }
+  }
+
+  it should "get admin by id" in {
+    db withSession {
+      getAdminByID(tmpUser.id) should be(Some(tmpUser))
+    }
+  }
+
+  it should "get admin by email" in {
+    db withSession {
+      getAdminByEmail(tmpUser.email) should be(Some(tmpUser))
+    }
+  }
+
+  it should "get admin by username" in {
+    db withSession {
+      getAdminByUsername(tmpUser.username) should be(Some(tmpUser))
+    }
+  }
+
+  it should "throw DublicateIDEntity for duplicate admins" in {
+    intercept[DuplicateIDEntity] {
+      db withSession {
+        saveAdminUser(tmpUser)
       }
     }
   }

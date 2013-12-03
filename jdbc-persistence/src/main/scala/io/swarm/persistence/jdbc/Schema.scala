@@ -187,12 +187,67 @@ trait MetadataComponent {
     def fk_device = foreignKey("device_permissions_device_fk", id, Devices)(_.id)
   }
 
+  object AdminUsers extends Table[(String, String, String, String, String, String, Boolean, Boolean, Boolean, Boolean)]("ADMIN_USERS") {
+    def id = column[String]("ID", O.PrimaryKey)
+
+    def name = column[String]("NAME")
+
+    def surname = column[String]("SURNAME")
+
+    def username = column[String]("USERNAME")
+
+    def email = column[String]("EMAIL")
+
+    def credential = column[String]("CREDENTIAL")
+
+    def activated = column[Boolean]("ACTIVATED")
+
+    def confirmed = column[Boolean]("CONFIRMED")
+
+    def disabled = column[Boolean]("DISABLED")
+
+    def deleted = column[Boolean]("DELETED", O.Default(false))
+
+    def * = id ~ name ~ surname ~ username ~ email ~ credential ~ activated ~ confirmed ~ disabled ~ deleted
+
+    def index_email = index("idx_adminusersemail", (email), unique = true)
+
+    def index_username = index("idx_adminusersusername", (username), unique = true)
+
+    /*val adminByID = for {
+      id <- Parameters[String]
+      (((a, _), o), d) <- AdminUsers.where(a=> (a.id is id) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
+
+    /*val adminByEmail = for {
+      email <- Parameters[String]
+      (((a, _), o), d) <- AdminUsers.where(a => (a.email is email) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.username, a.id, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
+
+    /*val adminByUsername = for {
+      username <- Parameters[String]
+      (((a, _), o), d) <- AdminUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
+  }
+
+  object OrganizationAdmins extends Table[(String, String)]("ORGANIZATION_ADMINS") {
+    def orgID = column[String]("ORGID")
+
+    def adminID = column[String]("ADMINID")
+
+    def * = orgID ~ adminID
+
+    def fk_organization = foreignKey("organization_admins_organization_fk", orgID, Organizations)(_.id)
+
+    def fk_admin = foreignKey("organization_admins_admin_fk", adminID, AdminUsers)(_.id)
+  }
+
   def create(implicit session: Session) {
-    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl ++ Devices.ddl ++ DevicePermissions.ddl).create
+    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl ++ Devices.ddl ++ DevicePermissions.ddl ++ AdminUsers.ddl ++ OrganizationAdmins.ddl).create
   }
 
   def drop(implicit session: Session) {
-    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl ++ Devices.ddl ++ DevicePermissions.ddl).drop
+    (Organizations.ddl ++ Databases.ddl ++ Series.ddl ++ Tags.ddl ++ Attributes.ddl ++ Devices.ddl ++ DevicePermissions.ddl ++ AdminUsers.ddl ++ OrganizationAdmins.ddl).drop
   }
 
   def saveDatabase(database: domain.Database, org: OrganizationRef)(implicit session: Session) {
@@ -215,14 +270,18 @@ trait MetadataComponent {
     Databases.databaseByName(name).firstOption.map(d => domain.Database(UUID.fromString(d._1), name, domain.DatabaseMetadata(d._2)))
   }
 
+  def checkEmpty[T, A](list: List[A])(body: => T): Option[T] = {
+    if (list == Nil)
+      None
+    else Some(body)
+  }
+
   def getSeries(seriesID: UUID)(implicit session: Session) = {
     val list = Series.seriesByID(seriesID.toString).list
-    if (list.isEmpty)
-      None
-    else {
+    checkEmpty(list) {
       val tags = (for (s <- list) yield s._3).toSet
       val attributes = (for (s <- list) yield (s._4, s._5)).toMap
-      Some(domain.Series(seriesID, list.head._2, list.head._1, tags, attributes, SeriesType.withName(list.head._6)))
+      domain.Series(seriesID, list.head._2, list.head._1, tags, attributes, SeriesType.withName(list.head._6))
     }
   }
 
@@ -255,14 +314,12 @@ trait MetadataComponent {
 
   def getSeriesByKey(key: String, dbID: UUID)(implicit session: Session) = {
     val list = Series.seriesByKey(key, dbID.toString).list
-    if (list.isEmpty)
-      None
-    else {
+    checkEmpty(list) {
       val name = list.head._1
       val id = UUID.fromString(list.head._2)
       val tags = (for (s <- list) yield s._3).toSet
       val attributes = (for (s <- list) yield (s._4, s._5)).toMap
-      Some(domain.Series(id, key, name, tags, attributes, SeriesType.withName(list.head._6)))
+      domain.Series(id, key, name, tags, attributes, SeriesType.withName(list.head._6))
     }
   }
 
@@ -372,18 +429,16 @@ trait MetadataComponent {
 
   def getOrganizationByID(orgID: UUID)(implicit session: Session) = {
     val orgs = Organizations.organizationByID(orgID.toString).list
-    if (orgs == Nil)
-      None
-    else
-      Some(domain.Organization(orgID, orgs.head._1, orgs.map(o => domain.Database(UUID.fromString(o._2), o._3, domain.DatabaseMetadata(o._4))).toSet))
+    checkEmpty(orgs) {
+      domain.Organization(orgID, orgs.head._1, orgs.map(o => domain.Database(UUID.fromString(o._2), o._3, domain.DatabaseMetadata(o._4))).toSet)
+    }
   }
 
   def getOrganizationByName(orgName: String)(implicit session: Session) = {
     val orgs = Organizations.organizationByName(orgName).list
-    if (orgs == Nil)
-      None
-    else
-      Some(domain.Organization(UUID.fromString(orgs.head._1), orgName, orgs.map(o => domain.Database(UUID.fromString(o._2), o._3, domain.DatabaseMetadata(o._4))).toSet))
+    checkEmpty(orgs) {
+      domain.Organization(UUID.fromString(orgs.head._1), orgName, orgs.map(o => domain.Database(UUID.fromString(o._2), o._3, domain.DatabaseMetadata(o._4))).toSet)
+    }
   }
 
   def saveOrganization(orgRef: OrganizationRef)(implicit session: Session) {
@@ -395,21 +450,17 @@ trait MetadataComponent {
 
   def getDeviceByID(id: UUID)(implicit session: Session) = {
     val devices = Devices.deviceByID(id.toString).list
-    if (devices == Nil)
-      None
-    else {
+    checkEmpty(devices) {
       val head = devices.head
-      Some(domain.Device(id, head._1, domain.DatabaseInfo(UUID.fromString(head._5), head._6), head._2, head._3, devices.map(_._4).toSet))
+      domain.Device(id, head._1, domain.DatabaseInfo(UUID.fromString(head._5), head._6), head._2, head._3, devices.map(_._4).toSet)
     }
   }
 
   def getDeviceByDeviceID(deviceID: String)(implicit session: Session) = {
     val devices = Devices.deviceByDeviceID(deviceID).list
-    if (devices == Nil)
-      None
-    else {
+    checkEmpty(devices) {
       val head = devices.head
-      Some(domain.Device(UUID.fromString(head._1), deviceID, domain.DatabaseInfo(UUID.fromString(head._5), head._6), head._2, head._3, devices.map(_._4).toSet))
+      domain.Device(UUID.fromString(head._1), deviceID, domain.DatabaseInfo(UUID.fromString(head._5), head._6), head._2, head._3, devices.map(_._4).toSet)
     }
   }
 
@@ -419,6 +470,73 @@ trait MetadataComponent {
     else {
       (Devices.id ~ Devices.deviceID ~ Devices.activated ~ Devices.disabled ~ Devices.dbID).insert(device.id.toString, device.deviceID, device.activated, device.disabled, device.databaseRef.id.toString)
       device.permissions.foreach(p => (DevicePermissions.id ~ DevicePermissions.devicePermission).insert(device.id.toString, p))
+    }
+  }
+
+  protected def extractOrganizationFromAdminList(admins: List[(String, String, String, String, String, Boolean, Boolean, Boolean, Option[String], Option[String], Option[String], Option[String], Option[Long])]): Set[domain.Organization] = {
+    //     group by orgID                                              orgID   orgName       databases
+    admins.groupBy(_._9).map {
+      r =>
+        (r._1, r._2.head._10) match {
+          case (None, None) => None
+          case (Some(orgID), Some(orgName)) =>
+            Some(domain.Organization(UUID.fromString(orgID), orgName, r._2.map {
+              d =>
+                (d._11, d._12, d._13) match {
+                  case (None, None, None) => None
+                  case (Some(dbid), Some(dbname), Some(oauthttl)) => Some(domain.Database(UUID.fromString(dbid), dbname, domain.DatabaseMetadata(oauthttl)))
+                  case _ => throw new IllegalArgumentException(s"illegal row ${r._2}")
+                }
+            }.flatten.toSet))
+          case _ => throw new IllegalArgumentException(s"illegal row ${r._2}")
+        }
+    }.flatten.toSet
+  }
+
+
+  def getAdminByID(id: UUID)(implicit session: Session) = {
+    val admins = (for {
+      (((a, _), o), d) <- AdminUsers.where(a => (a.id is id.toString) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)).list
+    checkEmpty(admins) {
+      val head = admins.head
+      domain.AdminUser(id, head._1, head._2, head._3, head._4, head._5, head._6, head._7, head._8,
+        extractOrganizationFromAdminList(admins))
+    }
+  }
+
+
+  def getAdminByEmail(email: String)(implicit session: Session) = {
+    val admins = (for {
+      (((a, _), o), d) <- AdminUsers.where(a => (a.email is email) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.username, a.id, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)).list
+    checkEmpty(admins) {
+      val head = admins.head
+      domain.AdminUser(UUID.fromString(head._4), head._1, head._2, head._3, email, head._5, head._6, head._7, head._8,
+        extractOrganizationFromAdminList(admins))
+    }
+  }
+
+  def getAdminByUsername(username: String)(implicit session: Session) = {
+    val admins = (for {
+      (((a, _), o), d) <- AdminUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)).list
+    checkEmpty(admins) {
+      val head = admins.head
+      domain.AdminUser(UUID.fromString(head._3), head._1, head._2, username, head._4, head._5, head._6, head._7,
+        head._8, extractOrganizationFromAdminList(admins))
+    }
+  }
+
+  def saveAdminUser(admin: domain.AdminUser)(implicit session: Session) {
+    val adminOption = getAdminByEmail(admin.email).map(v => v.email).orElse(getAdminByUsername(admin.username).map(v => v.username))
+    if (adminOption.isDefined)
+      throw domain.DuplicateIDEntity(s"admin user with ${adminOption.get} is already defined!")
+    else {
+      (AdminUsers.id ~ AdminUsers.name ~ AdminUsers.surname ~ AdminUsers.username ~ AdminUsers.email ~
+        AdminUsers.credential ~ AdminUsers.activated ~ AdminUsers.confirmed ~ AdminUsers.disabled).insert(admin.id.toString,
+          admin.name, admin.surname, admin.username, admin.email, admin.credential, admin.activated, admin.confirmed, admin.disabled)
+      admin.organizations.foreach(o => (OrganizationAdmins.orgID ~ OrganizationAdmins.adminID).insert(o.id.toString, admin.id.toString))
     }
   }
 }
