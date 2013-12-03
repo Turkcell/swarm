@@ -51,10 +51,10 @@ trait ManagementServiceComponent {
           resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set()))
         val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), name, surname, username, email, HashedAlgorithm.toHex(password), activated = !Config.adminUsersRequireActivation, confirmed = !Config.adminUsersRequireConfirmation, disabled = false, Set(org))
         clientRepository.saveAdminUser(admin)
+        //TODO should trigger admin flow
         resourceRepository.addAdminToOrganization(org.id, admin.id)
         (org, admin)
       }
-
     }
 
     def createDatabase(name: String, orgID: UUID): Database

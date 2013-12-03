@@ -27,9 +27,60 @@ import io.swarm.security.shiro._
 /**
  * Created by Anil Chalil on 11/15/13.
  */
-case class TokenInfo(uuid: UUID, `type`: TokenType.TokenType, tokenCategory: TokenCategory, created: DateTime, accessed: DateTime, inactive: Long, duration: Long, maxUsageCount: Long, principal: AuthPrincipalInfo, permissions: Set[String] = Set()) {
-  def expiration = if (this.duration > 0) uuid.timeStampInMillis + this.duration else uuid.timeStampInMillis + tokenCategory.expiration
+class TokenInfo private(val uuid: UUID, val `type`: TokenType.TokenType, val tokenCategory: TokenCategory, val created: DateTime, val accessed: DateTime, val inactive: Long, val duration: Long, val maxUsageCount: Long, val principal: AuthPrincipalInfo, val permissions: Set[String] = Set()) {
+  val expiration = if (duration > 0) uuid.timeStampInMillis + duration else uuid.timeStampInMillis + tokenCategory.expiration
+
+  def canEqual(other: Any): Boolean = other.isInstanceOf[TokenInfo]
+
+  override def equals(other: Any): Boolean = other match {
+    case that: TokenInfo =>
+      (that canEqual this) &&
+        uuid == that.uuid &&
+        `type` == that.`type` &&
+        tokenCategory == that.tokenCategory &&
+        created == that.created &&
+        accessed == that.accessed &&
+        inactive == that.inactive &&
+        duration == that.duration &&
+        maxUsageCount == that.maxUsageCount &&
+        principal == that.principal &&
+        permissions == that.permissions
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(uuid, `type`, tokenCategory, created, accessed, inactive, duration, maxUsageCount, principal, permissions)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+  }
 }
+
+trait TokenFactory {
+  this: ResourceRepositoryComponent with ClientRepositoryComponent =>
+
+  object TokenInfo {
+    protected def getMaxTtl(tokenCategory: TokenCategory, principal: AuthPrincipalInfo): Long = {
+      if (principal == null)
+        TokenCategoryValue.longTokenAge
+      else {
+        val dbMetadata = if (principal.`type` == AuthPrincipalType.Database) resourceRepository.getDatabaseMetadata(principal.uuid) else clientRepository.getDevice(principal.uuid).flatMap(d => resourceRepository.getDatabaseMetadata(d.databaseRef.id))
+        dbMetadata.map(meta => if (meta.oauthTTL == 0) TokenCategoryValue.longTokenAge else meta.oauthTTL).getOrElse(TokenCategoryValue.longTokenAge)
+      }
+    }
+
+    def apply(tokenCategory: TokenCategory, tokenType: TokenType.TokenType, principal: AuthPrincipalInfo, duration: Long, maxUsageCount: Long, permissions: Set[String] = Set()) = {
+      val maxTokenTtl = getMaxTtl(tokenCategory, principal)
+
+      if (duration > maxTokenTtl) throw new IllegalArgumentException(s"Your token age cannot be more than the maxium age of $maxTokenTtl milliseconds")
+
+      val uuid = UUIDGenerator.secretGenerator.generate()
+      val creation = new DateTime(uuid.timestamp())
+      val tokenInfo = new TokenInfo(uuid, if (tokenType == null) TokenType.Access else tokenType, tokenCategory, creation, creation, 0, if (duration == 0) maxTokenTtl else duration, maxUsageCount, principal, permissions)
+      OauthBearerToken(tokenInfo)
+    }
+  }
+
+}
+
 
 trait TokenRepositoryComponent {
   this: ClientRepositoryComponent with ResourceRepositoryComponent =>
@@ -42,28 +93,6 @@ trait TokenRepositoryComponent {
 
     def getTokenInfo(token: OauthBearerToken): TokenInfo
 
-    protected def putTokenInfo(tokenInfo: TokenInfo)
-
-    protected def getMaxTtl(tokenCategory: TokenCategory, principal: AuthPrincipalInfo): Long = {
-      if (principal == null)
-        TokenCategoryValue.longTokenAge
-      else {
-        val dbMetadata = if (principal.`type` == AuthPrincipalType.Database) resourceRepository.getDatabaseMetadata(principal.uuid) else clientRepository.getDevice(principal.uuid).flatMap(d => resourceRepository.getDatabaseMetadata(d.databaseRef.id))
-        dbMetadata.map(meta => if (meta.oauthTTL == 0) TokenCategoryValue.longTokenAge else meta.oauthTTL).getOrElse(TokenCategoryValue.longTokenAge)
-      }
-    }
-
-    def createOauthToken(tokenCategory: TokenCategory, tokenType: TokenType.TokenType, principal: AuthPrincipalInfo, duration: Long, maxUsageCount: Long, permissions: Set[String] = Set()) = {
-      val maxTokenTtl = getMaxTtl(tokenCategory, principal);
-
-      if (duration > maxTokenTtl) throw new IllegalArgumentException(s"Your token age cannot be more than the maxium age of $maxTokenTtl milliseconds");
-
-      val uuid = UUIDGenerator.secretGenerator.generate()
-      val creation = new DateTime(uuid.timestamp())
-      val tokenInfo = TokenInfo(uuid, if (tokenType == null) TokenType.Access else tokenType, tokenCategory, creation, creation, 0, if (duration == 0) maxTokenTtl else duration, maxUsageCount, principal, permissions)
-      putTokenInfo(tokenInfo);
-      OauthBearerToken(tokenInfo)
-    }
+    def putTokenInfo(tokenInfo: TokenInfo)
   }
-
 }
