@@ -187,12 +187,12 @@ trait MetadataComponent {
     def fk_device = foreignKey("device_permissions_device_fk", id, Devices)(_.id)
   }
 
-  object AdminUsers extends Table[(String, String, String, String, String, String, Boolean, Boolean, Boolean, Boolean)]("ADMIN_USERS") {
+  object AdminUsers extends Table[(String, Option[String], Option[String], String, String, String, Boolean, Boolean, Boolean, Boolean)]("ADMIN_USERS") {
     def id = column[String]("ID", O.PrimaryKey)
 
-    def name = column[String]("NAME")
+    def name = column[Option[String]]("NAME")
 
-    def surname = column[String]("SURNAME")
+    def surname = column[Option[String]]("SURNAME")
 
     def username = column[String]("USERNAME")
 
@@ -473,8 +473,8 @@ trait MetadataComponent {
     }
   }
 
-  protected def extractOrganizationFromAdminList(admins: List[(String, String, String, String, String, Boolean, Boolean, Boolean, Option[String], Option[String], Option[String], Option[String], Option[Long])]): Set[domain.Organization] = {
-    //     group by orgID                                              orgID   orgName       databases
+  protected def extractOrganizationFromAdminList(admins: List[(Option[String], Option[String], String, String, String, Boolean, Boolean, Boolean, Option[String], Option[String], Option[String], Option[String], Option[Long])]): Set[domain.Organization] = {
+
     admins.groupBy(_._9).map {
       r =>
         (r._1, r._2.head._10) match {

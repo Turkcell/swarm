@@ -27,7 +27,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   val uuidGenerator = Generators.timeBasedGenerator()
   val databases = List(domain.Database(uuidGenerator.generate(), "db1", DatabaseMetadata(0)), domain.Database(uuidGenerator.generate(), "db2", DatabaseMetadata(0)))
   val organization = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", databases.toSet)
-  val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(organization))
+  val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(organization))
   val devices = List(Device(uuidGenerator.generate(), "device1", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2")), Device(uuidGenerator.generate(), "device2", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2")))
 
 
