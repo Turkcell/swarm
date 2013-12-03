@@ -47,9 +47,9 @@ trait Client extends IDEntity {
 trait UserInfo extends Client {
   def username: String
 
-  def name: String
+  def name: Option[String]
 
-  def surname: String
+  def surname: Option[String]
 
   def email: String
 
@@ -60,9 +60,9 @@ trait CustomPermissions {
   def permissions: Set[String]
 }
 
-case class AdminUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean, organizations: Set[Organization]) extends UserInfo
+case class AdminUser(id: UUID, name: Option[String], surname: Option[String], username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean, organizations: Set[Organization]) extends UserInfo
 
-case class DatabaseUser(id: UUID, name: String, surname: String, username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean, permissions: Set[String]) extends UserInfo with CustomPermissions
+case class DatabaseUser(id: UUID, name: Option[String], surname: Option[String], username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean, permissions: Set[String]) extends UserInfo with CustomPermissions
 
 trait ResourceRef extends IDEntity {
   def name: String
