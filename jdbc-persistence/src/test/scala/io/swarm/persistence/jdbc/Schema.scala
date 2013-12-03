@@ -95,7 +95,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  it should "throw DublicateIDEntity for duplicate series" in {
+  it should "throw DuplicateIDEntity for duplicate series" in {
     intercept[DuplicateIDEntity] {
       db withSession {
         saveSeries(series.head, databases.head.id)
@@ -110,7 +110,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  it should "throw DublicateIDEntity for duplicate database" in {
+  it should "throw DuplicateIDEntity for duplicate database" in {
     intercept[DuplicateIDEntity] {
       db withSession {
         saveDatabase(databases.head, organization)
@@ -125,7 +125,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  it should "throw DublicateIDEntity for duplicate organizations" in {
+  it should "throw DuplicateIDEntity for duplicate organizations" in {
     intercept[DuplicateIDEntity] {
       db withSession {
         saveOrganization(organization)
@@ -145,7 +145,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  it should "throw DublicateIDEntity for duplicate devices" in {
+  it should "throw DuplicateIDEntity for duplicate devices" in {
     intercept[DuplicateIDEntity] {
       db withSession {
         saveDevice(devices.head)
@@ -171,7 +171,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  it should "throw DublicateIDEntity for duplicate admins" in {
+  it should "throw DuplicateIDEntity for duplicate admins" in {
     intercept[DuplicateIDEntity] {
       db withSession {
         saveAdminUser(tmpUser)
