@@ -83,7 +83,6 @@ trait TokenFactory {
 
 
 trait TokenRepositoryComponent {
-  this: ClientRepositoryComponent with ResourceRepositoryComponent =>
   val tokenRepository: TokenRepository
 
   trait TokenRepository {
@@ -95,4 +94,5 @@ trait TokenRepositoryComponent {
 
     def putTokenInfo(tokenInfo: TokenInfo)
   }
+
 }
