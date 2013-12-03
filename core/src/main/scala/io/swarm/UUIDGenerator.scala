@@ -23,4 +23,5 @@ import com.fasterxml.uuid.{EthernetAddress, Generators}
  */
 object UUIDGenerator {
   val secretGenerator = Generators.timeBasedGenerator(EthernetAddress.fromInterface())
+  val randomGenerator = Generators.randomBasedGenerator()
 }

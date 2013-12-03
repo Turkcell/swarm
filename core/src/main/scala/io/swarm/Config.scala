@@ -16,15 +16,33 @@
 
 package io.swarm
 
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigException, ConfigFactory}
 import org.apache.shiro.util.ByteSource
 
 /**
  * Created by Anil Chalil on 11/11/13.
  */
 object Config {
+
+  protected def getOptionalBoolean(path: String): Option[Boolean] = try {
+    Some(conf.getBoolean(path))
+  } catch {
+    case e: ConfigException.Missing =>
+      None
+  }
+
+  protected def getOptionalLong(path: String): Option[Long] = try {
+    Some(conf.getLong(path))
+  } catch {
+    case e: ConfigException.Missing =>
+      None
+  }
+
   val conf = ConfigFactory.load
   val clientTokenSecretSalt = conf.getString("security.oauth.clientSecretSalt")
   val tokenSecretSalt = conf.getString("security.oauth.tokenSecretSalt")
   val userInfoHash = ByteSource.Util.bytes(conf.getString("security.users.credentialSalt"))
+  val enableSandBoxDB = getOptionalBoolean("provisioning.organization.enableSandBoxDB").getOrElse(false)
+  val defaultDBOauthTTL = getOptionalLong("provisioning.database.defaultDBOauthTTL").getOrElse(0L)
+
 }
