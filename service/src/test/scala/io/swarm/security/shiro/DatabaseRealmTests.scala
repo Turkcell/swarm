@@ -39,7 +39,6 @@ class DatabaseRealmTests extends FlatSpec with ShouldMatchers with DatabaseRealm
   clientRepository.saveAdminUser(TestData.user)
   resourceRepository.saveOrganization(TestData.org)
   val databaseNonExist = Database(UUIDGenerator.secretGenerator.generate(), "nonExist", DatabaseMetadata(3600 * 1000 * 24))
-  resourceRepository.saveDatabase(TestData.database)
   val secret = ClientSecret(AuthPrincipalType.Database)
   tokenRepository.saveClientSecret(ClientID(TestData.database), secret)
   val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Database, TestData.database.id), 0, 0)

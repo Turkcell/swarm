@@ -95,13 +95,9 @@ trait ResourceRepository {
 
   def getDatabaseInfoAsync(uuid: UUID): Future[Option[DatabaseInfo]]
 
-  def saveOrganization(org: Organization): Unit
+  def saveOrganization(org: Organization): Organization
 
   def upsertOrganization(org: Organization): Option[Organization]
-
-  def saveDatabase(db: Database): Unit
-
-  def upsertDatabase(db: Database): Option[Database]
 
   def getOrganizationInfo(id: UUID): Option[OrganizationInfo]
 
@@ -119,6 +115,12 @@ trait ResourceRepositoryComponent {
 }
 
 trait DuplicateIDEntity extends IOTDBException
+
+trait IDEntityNotFound extends IOTDBException
+
+object IDEntityNotFound {
+  def apply(message: String) = new RuntimeException(message) with DuplicateIDEntity
+}
 
 object DuplicateIDEntity {
   def apply(message: String) = new RuntimeException(message) with DuplicateIDEntity

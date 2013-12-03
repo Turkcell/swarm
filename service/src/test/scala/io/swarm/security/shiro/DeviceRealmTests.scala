@@ -17,7 +17,7 @@
 package io.swarm.security.shiro
 
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.ShouldMatchers
 import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
@@ -37,9 +37,8 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
   SecurityUtils.setSecurityManager(sec)
   clientRepository.saveAdminUser(TestData.user)
   resourceRepository.saveOrganization(TestData.org)
-  resourceRepository.saveDatabase(TestData.database)
-  val device = Device(UUIDGenerator.secretGenerator.generate(), "mydevice", DatabaseInfo(TestData.database.id, TestData.database.name), true, false,Set())
-  val deviceNoneExistent = Device(UUIDGenerator.secretGenerator.generate(), "mydevice2", DatabaseInfo(TestData.database.id, TestData.database.name), true, false,Set())
+  val device = Device(UUIDGenerator.secretGenerator.generate(), "mydevice", DatabaseInfo(TestData.database.id, TestData.database.name), true, false, Set())
+  val deviceNoneExistent = Device(UUIDGenerator.secretGenerator.generate(), "mydevice2", DatabaseInfo(TestData.database.id, TestData.database.name), true, false, Set())
   val userPass = "test"
   clientRepository.saveDevice(device)
   val secret = ClientSecret(AuthPrincipalType.Device)

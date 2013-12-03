@@ -40,7 +40,7 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
-  val user = DatabaseUser(UUIDGenerator.secretGenerator.generate(), "test", "test", "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set())
+  val user = DatabaseUser(UUIDGenerator.secretGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set())
   val userPass = "test"
   clientRepository.saveDatabaseUser(user)
   val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 0, 0)

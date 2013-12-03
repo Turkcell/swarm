@@ -16,23 +16,19 @@
 
 package io.swarm.security.shiro
 
-import io.swarm.domain.ResourceRepositoryComponent
-import io.swarm.domain.ClientRepositoryComponent
-import io.swarm.domain.ClientRepository
-import io.swarm.domain.DatabaseMetadata
-import io.swarm.domain.Device
-import io.swarm.domain.Database
+import io.swarm.domain._
 import java.util.UUID
-import io.swarm.domain.OrganizationInfo
-import io.swarm.domain.UserInfo
-import io.swarm.domain.DatabaseInfo
-import io.swarm.domain.ResourceRepository
 import scala.concurrent._
 import scala.collection.mutable.Map
 import scala.concurrent.ExecutionContext.Implicits.global
-import io.swarm.domain.Organization
-import io.swarm.domain.DuplicateIDEntity
 import io.swarm.security.{TokenInfo, TokenRepositoryComponent}
+import io.swarm.domain.OrganizationInfo
+import io.swarm.domain.Database
+import io.swarm.domain.Organization
+import io.swarm.domain.DatabaseInfo
+import io.swarm.domain.Device
+import io.swarm.security.TokenInfo
+import io.swarm.domain.DatabaseMetadata
 
 trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryComponent with ResourceRepositoryComponent {
   val tokenRepository = new TokenRepository {
@@ -138,16 +134,17 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
   }
 
   val resourceRepository = new ResourceRepository {
-    val dbStore = Map[UUID, Database]()
     val orgStore = Map[UUID, Organization]()
 
     def saveOrganization(org: Organization) = this.synchronized {
-      if (orgStore.values.forall(_.name != org.name) && !orgStore.contains(org.id))
+      if (orgStore.values.forall(_.name != org.name) && !orgStore.contains(org.id)) {
         orgStore += (org.id -> org)
+        org
+      }
       else throw DuplicateIDEntity("invalid org")
     }
 
-    def getDatabase(id: UUID): Option[Database] = this.synchronized(dbStore.get(id))
+    def getDatabase(id: UUID): Option[Database] = this.synchronized(orgStore.values.find(o => o.databases.exists(_.id == id)).flatMap(o => o.databases.find(d => d.id == id)))
 
     def getDatabaseInfo(id: UUID): Option[DatabaseInfo] = getDatabase(id).map(db => DatabaseInfo(db.id, db.name))
 
@@ -170,18 +167,6 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
         orgStore.put(org.id, org)
       else
         throw DuplicateIDEntity("invalid org")
-    }
-
-    def saveDatabase(db: Database): Unit = this.synchronized {
-      if (dbStore.values.forall(_.name != db.name) && !dbStore.contains(db.id))
-        dbStore += (db.id -> db)
-      else throw DuplicateIDEntity("invalid database")
-    }
-
-    def upsertDatabase(db: Database): Option[Database] = this.synchronized {
-      if (dbStore.values.forall(d => d.name != db.name || d.id == db.id))
-        dbStore.put(db.id, db)
-      else throw DuplicateIDEntity("invalid database")
     }
 
   }
