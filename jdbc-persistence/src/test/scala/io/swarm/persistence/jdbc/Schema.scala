@@ -14,13 +14,16 @@ import io.swarm.security.HashedAlgorithm
  * Created by capacman on 10/26/13.
  */
 
-trait HSQLInMemoryDB {
+trait HSQLInMemoryDB extends Profile with DatabaseProvider {
+
   val profile: ExtendedProfile = HsqldbDriver
   lazy val db = Database.forURL("jdbc:hsqldb:mem:mymemdb", driver = "org.hsqldb.jdbc.JDBCDriver", user = "sa", password = "sa")
+
+
 }
 
 @RunWith(classOf[JUnitRunner])
-class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with MetadataComponent with Profile with HSQLInMemoryDB {
+class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with MetadataComponent with HSQLInMemoryDB {
 
   import Database.threadLocalSession
 

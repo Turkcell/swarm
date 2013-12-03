@@ -108,6 +108,8 @@ trait ResourceRepository {
   def getDatabase(id: UUID): Option[Database]
 
   def getDatabaseMetadata(id: UUID): Option[DatabaseMetadata]
+
+  def addAdminToOrganization(orgID: UUID, adminID: UUID)
 }
 
 trait ResourceRepositoryComponent {

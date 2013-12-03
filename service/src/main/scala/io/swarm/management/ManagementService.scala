@@ -22,17 +22,18 @@ import io.swarm.domain.DatabaseInfo
 import java.util.UUID
 import scala.concurrent._
 import ExecutionContext.Implicits.global
-import io.swarm.security.{AnonymousAuthorizer, TokenRepositoryComponent}
+import io.swarm.security.{HashedAlgorithm, AnonymousAuthorizer, TokenRepositoryComponent}
 import io.swarm.{Config, UUIDGenerator}
+import io.swarm.persistence.PersistenceSessionComponent
 
 /**
  * Created by Anil Chalil on 11/1/13.
  */
 trait ManagementServiceComponent {
-  this: TokenRepositoryComponent with ResourceRepositoryComponent with ClientRepositoryComponent =>
+  this: TokenRepositoryComponent with ResourceRepositoryComponent with ClientRepositoryComponent with PersistenceSessionComponent with AnonymousAuthorizer =>
   val managementService: ManagementService
 
-  trait ManagementService extends AnonymousAuthorizer {
+  trait ManagementService {
     private def isValidEmail(email: String): Boolean =
       """(\w+)@([\w\.]+)""".r.unapplySeq(email).isDefined
 
@@ -40,13 +41,20 @@ trait ManagementServiceComponent {
       Database(UUIDGenerator.randomGenerator.generate(), "sandbox", DatabaseMetadata(Config.defaultDBOauthTTL))
     }
 
-    def createOrganizationWithAdmin(organizationName: String, name: Option[String], surname: Option[String], username: String, email: String): Organization = isAnonymous {
+    def createOrganizationWithAdmin(organizationName: String, name: Option[String], surname: Option[String], username: String, email: String, password: String): (Organization, UserInfo) = isAnonymous {
       require(username != null && !username.isEmpty, "username could not be empty or null")
       require(email != null && isValidEmail(email), "email should be correct!")
-      if (Config.enableSandBoxDB)
-        resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set(createSandBoxDB())))
-      else
-        resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set()))
+      persistenceSession withTransaction {
+        val org = if (Config.enableSandBoxDB)
+          resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set(createSandBoxDB())))
+        else
+          resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set()))
+        val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), name, surname, username, email, HashedAlgorithm.toHex(password), activated = !Config.adminUsersRequireActivation, confirmed = !Config.adminUsersRequireConfirmation, disabled = false, Set(org))
+        clientRepository.saveAdminUser(admin)
+        resourceRepository.addAdminToOrganization(org.id, admin.id)
+        (org, admin)
+      }
+
     }
 
     def createDatabase(name: String, orgID: UUID): Database

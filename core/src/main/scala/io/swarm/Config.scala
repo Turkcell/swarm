@@ -45,4 +45,8 @@ object Config {
   val enableSandBoxDB = getOptionalBoolean("provisioning.organization.enableSandBoxDB").getOrElse(false)
   val defaultDBOauthTTL = getOptionalLong("provisioning.database.defaultDBOauthTTL").getOrElse(0L)
 
+  val adminUsersRequireActivation = getOptionalBoolean("provisioning.organization.adminUserActivation").getOrElse(false)
+
+  val adminUsersRequireConfirmation = getOptionalBoolean("provisioning.organization.adminUserConfirmation").getOrElse(false)
+
 }
