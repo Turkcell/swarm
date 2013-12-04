@@ -21,7 +21,7 @@ import org.scalatest.junit.JUnitRunner
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.ShouldMatchers
-import org.joda.time.DateTime
+import com.github.nscala_time.time.Imports._
 import java.nio.BufferUnderflowException
 import domain._
 import java.lang.IllegalArgumentException
@@ -38,12 +38,12 @@ import io.swarm.domain.Device
  */
 @RunWith(classOf[JUnitRunner])
 class TokenTests extends FlatSpec with ShouldMatchers {
-  val database = Database(UUIDGenerator.secretGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24))
-  val org = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", Set(database))
-  val tmpAdminUser = AdminUser(UUIDGenerator.secretGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false,Set(org))
-  val tmpDBUser = DatabaseUser(UUIDGenerator.secretGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false,Set())
+  val database = Database(UUIDGenerator.randomGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24))
+  val org = Organization(UUIDGenerator.randomGenerator.generate(), "testorg", Set(database))
+  val tmpAdminUser = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false, Set(org))
+  val tmpDBUser = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false, Set())
   "token " should " construct an OauthBearerToken" in {
-    val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, TokenCategory.Access, DateTime.now(), DateTime.now(), 0, 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.randomGenerator.generate()), 0.toDuration, 0)
     val direct = OauthBearerToken(tokenInfo)
     val fromStr = OauthBearerToken(direct.token)
     fromStr shouldBe direct
@@ -57,7 +57,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   it should "throw ExpiredTokenException" in {
     intercept[ExpiredTokenException] {
-      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, TokenCategory.Access, DateTime.now(), DateTime.now(), 0, 1, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+      val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.randomGenerator.generate()), 1.toDuration, 0)
       val token = OauthBearerToken(tokenInfo)
       Thread.sleep(10)
       OauthBearerToken(token.token)
@@ -80,7 +80,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   it should "throw BadTokenException when signature not match" in {
     intercept[BadTokenException] {
-      val tokenInfo = TokenInfo(UUIDGenerator.secretGenerator.generate(), TokenType.Access, TokenCategory.Access, DateTime.now(), DateTime.now(), 0, 0, 0, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.secretGenerator.generate()))
+      val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.randomGenerator.generate()), 0.toDuration, 0)
       val a = OauthBearerToken(tokenInfo)
       val t = a.token
       if (t.last.isDigit) {
@@ -93,10 +93,10 @@ class TokenTests extends FlatSpec with ShouldMatchers {
   }
 
   "client id " should " should construct a ClientID" in {
-    val org = ClientID(OrganizationInfo(UUIDGenerator.secretGenerator.generate(), "org"))
-    val dbInfo = DatabaseInfo(UUIDGenerator.secretGenerator.generate(), "db")
+    val org = ClientID(OrganizationInfo(UUIDGenerator.randomGenerator.generate(), "org"))
+    val dbInfo = DatabaseInfo(UUIDGenerator.randomGenerator.generate(), "db")
     val db = ClientID(dbInfo)
-    val dev = ClientID(Device(UUIDGenerator.secretGenerator.generate(), "device", dbInfo, true, false,Set()))
+    val dev = ClientID(Device(UUIDGenerator.randomGenerator.generate(), "device", dbInfo, true, false, Set()))
 
     org shouldBe ClientID(org.id)
     db shouldBe ClientID(db.id)

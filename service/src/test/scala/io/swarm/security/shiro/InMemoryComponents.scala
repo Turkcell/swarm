@@ -39,7 +39,7 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
 
     def getClientSecret(clientID: ClientID): ClientSecret = this.synchronized(ClientSecret(secretStore(clientID.principalID)))
 
-    protected def putTokenInfo(tokenInfo: TokenInfo) = this.synchronized {
+    def putTokenInfo(tokenInfo: TokenInfo) = this.synchronized {
       tokenStore += (tokenInfo.uuid -> tokenInfo)
     }
 
@@ -169,5 +169,6 @@ trait InMemoryComponents extends TokenRepositoryComponent with ClientRepositoryC
         throw DuplicateIDEntity("invalid org")
     }
 
+    def addAdminToOrganization(orgID: UUID, adminID: UUID): Unit = ???
   }
 }

@@ -24,11 +24,12 @@ import org.scalatest.ShouldMatchers
 import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConverters._
 import org.apache.shiro.SecurityUtils
-import io.swarm.security.{HashedAlgorithm, AuthPrincipalType, TokenCategory}
+import io.swarm.security.{TokenInfo, HashedAlgorithm, AuthPrincipalType, TokenCategory}
 import io.swarm.UUIDGenerator
 import io.swarm.domain.DatabaseUser
 import io.swarm.domain.UserInfo
 import io.swarm.domain.Client
+import com.github.nscala_time.time.Imports._
 
 /**
  * Created by Anil Chalil on 11/15/13.
@@ -40,11 +41,19 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
-  val user = DatabaseUser(UUIDGenerator.secretGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set())
+  val user = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set())
   val userPass = "test"
   clientRepository.saveDatabaseUser(user)
-  val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 0, 0)
-  val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 100, 0)
+  val validToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 0.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
+  val expiredToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 100.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
 
   def disable {
     clientRepository.upsertDatabaseUser(user.copy(disabled = true))

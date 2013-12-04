@@ -20,15 +20,20 @@ package security
 
 import java.util.UUID
 import org.joda.time.DateTime
-import domain.{ResourceRepositoryComponent, ClientRepositoryComponent}
 import io.swarm.security.TokenCategory._
 import io.swarm.security.shiro._
+import com.github.nscala_time.time.Imports._
 
 /**
  * Created by Anil Chalil on 11/15/13.
  */
-class TokenInfo private(val uuid: UUID, val `type`: TokenType.TokenType, val tokenCategory: TokenCategory, val created: DateTime, val accessed: DateTime, val inactive: Long, val duration: Long, val maxUsageCount: Long, val principal: AuthPrincipalInfo, val permissions: Set[String] = Set()) {
-  val expiration = if (duration > 0) uuid.timeStampInMillis + duration else uuid.timeStampInMillis + tokenCategory.expiration
+class TokenInfo private(val uuid: UUID, val `type`: TokenType.TokenType, val tokenCategory: TokenCategory, val created: DateTime, val accessed: DateTime, val inactive: Duration, val duration: Duration, val usageCount: Long, val maxUsageCount: Long, val principal: AuthPrincipalInfo, val permissions: Set[String] = Set()) {
+  val expiration = {
+    val uuidDate = uuid.timeStampInMillis.toDateTime
+    if (duration > 0.toDuration) uuidDate + duration else uuidDate + tokenCategory.expiration
+  }
+
+  def isExpired = DateTime.now() > expiration || (maxUsageCount != 0 && usageCount > maxUsageCount)
 
   def canEqual(other: Any): Boolean = other.isInstanceOf[TokenInfo]
 
@@ -42,6 +47,7 @@ class TokenInfo private(val uuid: UUID, val `type`: TokenType.TokenType, val tok
         accessed == that.accessed &&
         inactive == that.inactive &&
         duration == that.duration &&
+        usageCount == that.usageCount &&
         maxUsageCount == that.maxUsageCount &&
         principal == that.principal &&
         permissions == that.permissions
@@ -49,36 +55,21 @@ class TokenInfo private(val uuid: UUID, val `type`: TokenType.TokenType, val tok
   }
 
   override def hashCode(): Int = {
-    val state = Seq(uuid, `type`, tokenCategory, created, accessed, inactive, duration, maxUsageCount, principal, permissions)
+    val state = Seq(uuid, `type`, tokenCategory, created, accessed, inactive, duration, usageCount, maxUsageCount, principal, permissions)
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 }
 
-trait TokenFactory {
-  this: ResourceRepositoryComponent with ClientRepositoryComponent =>
 
-  object TokenInfo {
-    protected def getMaxTtl(tokenCategory: TokenCategory, principal: AuthPrincipalInfo): Long = {
-      if (principal == null)
-        TokenCategoryValue.longTokenAge
-      else {
-        val dbMetadata = if (principal.`type` == AuthPrincipalType.Database) resourceRepository.getDatabaseMetadata(principal.uuid) else clientRepository.getDevice(principal.uuid).flatMap(d => resourceRepository.getDatabaseMetadata(d.databaseRef.id))
-        dbMetadata.map(meta => if (meta.oauthTTL == 0) TokenCategoryValue.longTokenAge else meta.oauthTTL).getOrElse(TokenCategoryValue.longTokenAge)
-      }
-    }
+object TokenInfo {
 
-    def apply(tokenCategory: TokenCategory, tokenType: TokenType.TokenType, principal: AuthPrincipalInfo, duration: Long, maxUsageCount: Long, permissions: Set[String] = Set()) = {
-      val maxTokenTtl = getMaxTtl(tokenCategory, principal)
+  def apply(tokenCategory: TokenCategory, tokenType: TokenType.TokenType, principal: AuthPrincipalInfo, duration: Duration, maxUsageCount: Long, permissions: Set[String] = Set()) = {
+    if (duration > tokenCategory.expiration) throw new IllegalArgumentException(s"Your token age cannot be more than the maxium age of ${tokenCategory.expiration} milliseconds")
 
-      if (duration > maxTokenTtl) throw new IllegalArgumentException(s"Your token age cannot be more than the maxium age of $maxTokenTtl milliseconds")
-
-      val uuid = UUIDGenerator.secretGenerator.generate()
-      val creation = new DateTime(uuid.timestamp())
-      val tokenInfo = new TokenInfo(uuid, if (tokenType == null) TokenType.Access else tokenType, tokenCategory, creation, creation, 0, if (duration == 0) maxTokenTtl else duration, maxUsageCount, principal, permissions)
-      OauthBearerToken(tokenInfo)
-    }
+    val uuid = UUIDGenerator.secretGenerator.generate()
+    val creation = new DateTime(uuid.timeStampInMillis)
+    new TokenInfo(uuid, if (tokenType == null) TokenType.Access else tokenType, tokenCategory, creation, creation, 0.toDuration, if (duration.getMillis > 0) duration else tokenCategory.expiration, 0, maxUsageCount, principal, permissions)
   }
-
 }
 
 

@@ -17,6 +17,7 @@
 package io.swarm
 package security.shiro
 
+import com.github.nscala_time.time.Imports._
 import io.swarm.security.AuthPrincipalType._
 import java.util.UUID
 import io.swarm.Config
@@ -31,7 +32,7 @@ import io.swarm.security.TokenInfo
 /**
  * Created by Anil Chalil on 11/19/13.
  */
-class OauthBearerToken private(val token: String, val authPrincipalType: AuthPrincipalType, val category: TokenCategory, val tokenID: UUID, val principalID: UUID, val expires: Long) extends PrincipalAuthenticationToken {
+class OauthBearerToken private(val token: String, val authPrincipalType: AuthPrincipalType, val category: TokenCategory, val tokenID: UUID, val principalID: UUID, val expires: DateTime) extends PrincipalAuthenticationToken {
   def getPrincipal = token
 
   def getCredentials = token
@@ -66,13 +67,13 @@ object OauthBearerToken {
     }
     val bytes = ByteBuffer.allocate(l)
     bytes.put(tokenInfo.uuid.asByteArray)
-    var expires = Long.MaxValue
+    var expires = Long.MaxValue.toDateTime
     if (tokenInfo.tokenCategory.expires) {
       expires = tokenInfo.expiration
-      bytes.putLong(expires)
+      bytes.putLong(expires.millis)
     }
     bytes.put(tokenInfo.principal.uuid.asByteArray)
-    bytes.put(sha(tokenInfo.tokenCategory, tokenInfo.principal.`type`, expires, tokenInfo.uuid, tokenInfo.principal.uuid))
+    bytes.put(sha(tokenInfo.tokenCategory, tokenInfo.principal.`type`, expires.millis, tokenInfo.uuid, tokenInfo.principal.uuid))
     new OauthBearerToken(tokenInfo.tokenCategory.base64Prefix + tokenInfo.principal.`type`.base64Prefix + bytes.base64URLSafeString, tokenInfo.principal.`type`, tokenInfo.tokenCategory, tokenInfo.uuid, tokenInfo.principal.uuid, expires)
   }
 
@@ -94,7 +95,7 @@ object OauthBearerToken {
       val shaActual = new Array[Byte](HashedAlgorithm.currentSHALength)
       bb.get(shaActual)
       if (shaExpected.sameElements(shaActual)) {
-        new OauthBearerToken(token, principleType, category, tokenUUID, principalID, expires)
+        new OauthBearerToken(token, principleType, category, tokenUUID, principalID, expires.toDateTime)
       } else throw BadTokenException("Invalid Token Signature")
     } catch {
       case e: MatchError => throw NotTokenException(e)

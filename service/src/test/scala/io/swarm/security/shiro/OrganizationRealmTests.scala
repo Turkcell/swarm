@@ -24,6 +24,7 @@ import io.swarm.UUIDGenerator
 import io.swarm.security._
 import io.swarm.domain.Organization
 import scala.collection.JavaConverters._
+import com.github.nscala_time.time.Imports._
 
 /**
  * Created by Anil Chalil on 11/19/13.
@@ -35,11 +36,19 @@ class OrganizationRealmTests extends FlatSpec with ShouldMatchers with Organizat
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
   clientRepository.saveAdminUser(TestData.user)
-  val orgNonExistent = Organization(UUIDGenerator.secretGenerator.generate(), "testorgnonexist", Set())
+  val orgNonExistent = Organization(UUIDGenerator.randomGenerator.generate(), "testorgnonexist", Set())
   resourceRepository.saveOrganization(TestData.org)
   val secret = ClientSecret(AuthPrincipalType.Organization)
   tokenRepository.saveClientSecret(ClientID(TestData.org), secret)
-  val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Organization, TestData.org.id), 0, 0)
-  val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Organization, TestData.org.id), 100, 0)
+  val validToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Organization, TestData.org.id), 0.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
+  val expiredToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Organization, TestData.org.id), 100.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
   "Organization" should behave like basic(ClientIDSecretToken(ClientID(TestData.org), secret), ClientIDSecretToken(ClientID(TestData.org), ClientSecret(AuthPrincipalType.Organization)), ClientIDSecretToken(ClientID(orgNonExistent), ClientSecret(AuthPrincipalType.Organization)), validToken, expiredToken)
 }

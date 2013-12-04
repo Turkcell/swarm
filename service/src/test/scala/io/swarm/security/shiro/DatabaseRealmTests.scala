@@ -26,6 +26,7 @@ import io.swarm.security._
 import scala.collection.JavaConverters._
 import io.swarm.domain.Database
 import io.swarm.domain.DatabaseMetadata
+import com.github.nscala_time.time.Imports._
 
 /**
  * Created by Anil Chalil on 11/19/13.
@@ -38,10 +39,18 @@ class DatabaseRealmTests extends FlatSpec with ShouldMatchers with DatabaseRealm
   SecurityUtils.setSecurityManager(sec)
   clientRepository.saveAdminUser(TestData.user)
   resourceRepository.saveOrganization(TestData.org)
-  val databaseNonExist = Database(UUIDGenerator.secretGenerator.generate(), "nonExist", DatabaseMetadata(3600 * 1000 * 24))
+  val databaseNonExist = Database(UUIDGenerator.randomGenerator.generate(), "nonExist", DatabaseMetadata(3600 * 1000 * 24))
   val secret = ClientSecret(AuthPrincipalType.Database)
   tokenRepository.saveClientSecret(ClientID(TestData.database), secret)
-  val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Database, TestData.database.id), 0, 0)
-  val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Database, TestData.database.id), 100, 0)
+  val validToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Database, TestData.database.id), 0.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
+  val expiredToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Database, TestData.database.id), 100.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
   "Database" should behave like basic(ClientIDSecretToken(ClientID(TestData.database), secret), ClientIDSecretToken(ClientID(TestData.database), ClientSecret(AuthPrincipalType.Database)), ClientIDSecretToken(ClientID(databaseNonExist), ClientSecret(AuthPrincipalType.Database)), validToken, expiredToken)
 }

@@ -21,11 +21,11 @@ import org.scalatest.ShouldMatchers
 import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
-import io.swarm.security.TokenCategory
-import io.swarm.security.AuthPrincipalType
+import io.swarm.security.{TokenInfo, TokenCategory, AuthPrincipalType}
 import io.swarm.domain.UserInfo
 import scala.collection.JavaConverters._
 import io.swarm.domain.Client
+import com.github.nscala_time.time.Imports._
 
 class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
   val realm = AdminUserRealm
@@ -35,8 +35,16 @@ class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRea
   SecurityUtils.setSecurityManager(sec)
   val userPass = "test"
   clientRepository.saveAdminUser(TestData.user)
-  val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, TestData.user.id), 0, 0)
-  val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, TestData.user.id), 100, 0)
+  val validToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, TestData.user.id), 0.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
+  val expiredToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, TestData.user.id), 100.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
 
   def disable {
     clientRepository.upsertAdminUser(TestData.user.copy(disabled = true))

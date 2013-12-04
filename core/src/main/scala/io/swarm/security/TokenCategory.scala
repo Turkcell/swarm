@@ -16,7 +16,7 @@
 
 package io.swarm
 package security
-
+import com.github.nscala_time.time.Imports._
 /**
  * Created by Anil Chalil
  */
@@ -78,8 +78,8 @@ object TokenCategory extends Enumeration {
     val emailBase64 = ("-" + Email.prefix).base64
     val prefixLength = 2
     val base64prefixLength = 4
-    val longTokenAge = 7 * 24 * 60 * 60 * 1000
-    val shortTokenAge = 24 * 60 * 60 * 1000
+    val longTokenAge = (7 * 24 * 60 * 60 * 1000).toDuration
+    val shortTokenAge = (24 * 60 * 60 * 1000).toDuration
   }
 
 }

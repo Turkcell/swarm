@@ -21,13 +21,13 @@ import org.scalatest.ShouldMatchers
 import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
-import io.swarm.security.TokenCategory
-import io.swarm.security.AuthPrincipalType
+import io.swarm.security.{TokenInfo, TokenCategory, AuthPrincipalType}
 import io.swarm.domain.Client
 import io.swarm.domain.Device
 import io.swarm.UUIDGenerator
 import io.swarm.domain.DatabaseInfo
 import scala.collection.JavaConverters._
+import com.github.nscala_time.time.Imports._
 
 class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
   val realm = DeviceRealm
@@ -37,14 +37,22 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
   SecurityUtils.setSecurityManager(sec)
   clientRepository.saveAdminUser(TestData.user)
   resourceRepository.saveOrganization(TestData.org)
-  val device = Device(UUIDGenerator.secretGenerator.generate(), "mydevice", DatabaseInfo(TestData.database.id, TestData.database.name), true, false, Set())
-  val deviceNoneExistent = Device(UUIDGenerator.secretGenerator.generate(), "mydevice2", DatabaseInfo(TestData.database.id, TestData.database.name), true, false, Set())
+  val device = Device(UUIDGenerator.randomGenerator.generate(), "mydevice", DatabaseInfo(TestData.database.id, TestData.database.name), true, false, Set())
+  val deviceNoneExistent = Device(UUIDGenerator.randomGenerator.generate(), "mydevice2", DatabaseInfo(TestData.database.id, TestData.database.name), true, false, Set())
   val userPass = "test"
   clientRepository.saveDevice(device)
   val secret = ClientSecret(AuthPrincipalType.Device)
   tokenRepository.saveClientSecret(ClientID(device), secret)
-  val validToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Device, device.id), 0, 0)
-  val expiredToken = tokenRepository.createOauthToken(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Device, device.id), 100, 0)
+  val validToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Device, device.id), 0.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
+  val expiredToken = {
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Device, device.id), 100.toDuration, 0)
+    tokenRepository.putTokenInfo(tokenInfo)
+    OauthBearerToken(tokenInfo)
+  }
 
   def disable {
     clientRepository.upsertDevice(device.copy(disabled = true))

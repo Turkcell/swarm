@@ -26,17 +26,15 @@ trait HSQLInMemoryDB extends Profile with DatabaseProvider {
 class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with MetadataComponent with HSQLInMemoryDB {
 
   import Database.threadLocalSession
-
-  val uuidGenerator = Generators.timeBasedGenerator()
-  val databases = List(domain.Database(uuidGenerator.generate(), "db1", DatabaseMetadata(0)), domain.Database(uuidGenerator.generate(), "db2", DatabaseMetadata(0)))
-  val organization = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", databases.toSet)
-  val tmpUser = AdminUser(UUIDGenerator.secretGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(organization))
-  val devices = List(Device(uuidGenerator.generate(), "device1", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2")), Device(uuidGenerator.generate(), "device2", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2")))
+  val databases = List(domain.Database(UUIDGenerator.randomGenerator.generate(), "db1", DatabaseMetadata(0)), domain.Database(UUIDGenerator.randomGenerator.generate(), "db2", DatabaseMetadata(0)))
+  val organization = Organization(UUIDGenerator.randomGenerator.generate(), "testorg", databases.toSet)
+  val tmpUser = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(organization))
+  val devices = List(Device(UUIDGenerator.randomGenerator.generate(), "device1", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2")), Device(UUIDGenerator.randomGenerator.generate(), "device2", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2")))
 
 
   val series = List(
-    domain.Series(uuidGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1"), SeriesType.Long),
-    domain.Series(uuidGenerator.generate(), "key2", Some("second series"), Set("tag1", "tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3"), SeriesType.Float))
+    domain.Series(UUIDGenerator.randomGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1"), SeriesType.Long),
+    domain.Series(UUIDGenerator.randomGenerator.generate(), "key2", Some("second series"), Set("tag1", "tag2", "tag3"), Map("attr2" -> "val2", "attr3" -> "val3"), SeriesType.Float))
 
   override def beforeAll(configMap: ConfigMap) {
     db withSession {
@@ -109,7 +107,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   it should "get database by id" in {
     db withSession {
       getDatabase(databases.head.id) should be(Some(databases.head))
-      getDatabase(UUIDGenerator.secretGenerator.generate()) should be(None)
+      getDatabase(UUIDGenerator.randomGenerator.generate()) should be(None)
     }
   }
 
@@ -124,7 +122,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   it should "get organization by id" in {
     db withSession {
       getOrganizationByID(organization.id) should be(Some(organization))
-      getOrganizationByID(UUIDGenerator.secretGenerator.generate()) should be(None)
+      getOrganizationByID(UUIDGenerator.randomGenerator.generate()) should be(None)
     }
   }
 

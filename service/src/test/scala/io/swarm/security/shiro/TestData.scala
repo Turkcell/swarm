@@ -9,7 +9,7 @@ import io.swarm.security.HashedAlgorithm
  */
 object TestData {
 
-  val database = Database(UUIDGenerator.secretGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24))
-  val org = Organization(UUIDGenerator.secretGenerator.generate(), "testorg", Set(database))
-  val user = AdminUser(UUIDGenerator.secretGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(org))
+  val database = Database(UUIDGenerator.randomGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24))
+  val org = Organization(UUIDGenerator.randomGenerator.generate(), "testorg", Set(database))
+  val user = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(org))
 }
