@@ -2,7 +2,7 @@ name := "jdbc-persistence"
 
 libraryDependencies ++= Seq(
   // use the right Slick version here:
-  "com.typesafe.slick" %% "slick" % "1.0.1",
+  "com.typesafe.slick" %% "slick" % "2.0.0-M3",
   "org.slf4j" % "slf4j-api" % "1.7.5",
   "com.typesafe" % "config" % "1.0.2",
   "com.fasterxml.uuid" % "java-uuid-generator" % "3.1.3",

@@ -100,14 +100,14 @@ trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretRealmBaseComp
         bearerToken.authPrincipalType match {
           case AuthPrincipalType.Device => authorizeBearer(clientRepository.getDeviceAsync(bearerToken.principalID), bearerToken)
           case AuthPrincipalType.Database => authorizeBearer(resourceRepository.getDatabaseInfoAsync(bearerToken.principalID), bearerToken)
-          case AuthPrincipalType.Organization => authorizeBearer(resourceRepository.getOrganizationInfoAsync(bearerToken.principalID), bearerToken)
+          case AuthPrincipalType.Organization => authorizeBearer(resourceRepository.getOrganizationAsync(bearerToken.principalID), bearerToken)
         }
 
       case clientIDSecret: ClientIDSecretToken =>
         clientIDSecret.authPrincipalType match {
           case AuthPrincipalType.Device => authorizeClientIDSecret(clientRepository.getDeviceAsync(clientIDSecret.principalID), clientIDSecret)
           case AuthPrincipalType.Database => authorizeClientIDSecret(resourceRepository.getDatabaseInfoAsync(clientIDSecret.principalID), clientIDSecret)
-          case AuthPrincipalType.Organization => authorizeClientIDSecret(resourceRepository.getOrganizationInfoAsync(clientIDSecret.principalID), clientIDSecret)
+          case AuthPrincipalType.Organization => authorizeClientIDSecret(resourceRepository.getOrganizationAsync(clientIDSecret.principalID), clientIDSecret)
         }
     }
   }
@@ -156,8 +156,8 @@ trait DatabaseRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
 
     override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
       val info = new SimpleAuthorizationInfo()
-      val database = principals.byType(classOf[Database]).asScala.head
-      info.addObjectPermission(Permissions.forDatabases(database))
+      val databaseInfo = principals.byType(classOf[DatabaseInfo]).asScala.head
+      info.addObjectPermission(Permissions.forDatabases(databaseInfo))
       info.addRoles(List(Roles.DatabaseAdmin).asJavaCollection)
       info
     }

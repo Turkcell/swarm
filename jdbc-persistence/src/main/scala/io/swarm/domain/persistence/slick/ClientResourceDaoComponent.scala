@@ -1,0 +1,628 @@
+package io.swarm.domain.persistence.slick
+
+import io.swarm.domain
+import java.util.UUID
+import scala.slick.jdbc.{StaticQuery => Q}
+import io.swarm.domain.{OrganizationInfo, Organization, SeriesType}
+import io.swarm.persistence.slick.SlickProfileComponent
+
+
+trait ClientResourceDaoComponent {
+  this: SlickProfileComponent =>
+
+  val clientResourceDao: ClientResourceDao
+
+  trait ClientResourceDao {
+
+    //...to be able import profile.simple._
+
+    import profile.simple._
+
+
+    // Definition of the Organizations table
+    class Organizations(tag: Tag) extends Table[(String, String, Boolean, Int)](tag, "Organizations") {
+      // This is the primary key column
+      def id = column[String]("ORG_ID", O.PrimaryKey)
+
+      def name = column[String]("ORG_NAME")
+
+      def deleted = column[Boolean]("DELETED", O.Default(false))
+
+      def version = column[Int]("VERSION", O.Default(0))
+
+      // Every table needs a * projection with the same type as the table's type parameter
+      def * = (id, name, deleted, version)
+
+      def index_name = index("idx_orgname", (name), unique = false)
+    }
+
+    val organizations = TableQuery[Organizations]
+
+    // Definition of the databases table
+    class Databases(tag: Tag) extends Table[(String, String, String, Long, Boolean, Int)](tag, "DATABASES") {
+      // This is the primary key column
+      def id = column[String]("DB_ID", O.PrimaryKey)
+
+      def name = column[String]("DB_NAME")
+
+      def organization = column[String]("DB_ORGANIZATION")
+
+      def oauthTTL = column[Long]("OAUTH_TTL", O.Default(0L))
+
+      def deleted = column[Boolean]("DELETED", O.Default(false))
+
+      def version = column[Int]("VERSION", O.Default(0))
+
+      // Every table needs a * projection with the same type as the table's type parameter
+      def * = (id, name, organization, oauthTTL, deleted, version)
+
+      def index_name = index("idx_dbname", (name), unique = false)
+
+      def fk_org = foreignKey("database_org_fk", organization, organizations)(_.id)
+    }
+
+    val databases = TableQuery[Databases]
+
+    // Definition of the Series table
+    class Series(tag: Tag) extends Table[(String, String, String, Option[String], String, Boolean)](tag, "SERIES") {
+      // This is the primary key column
+      def id = column[String]("SERIES_ID", O.PrimaryKey)
+
+      def dbID = column[String]("DB_ID")
+
+      def key = column[String]("SERIES_KEY")
+
+      def name = column[Option[String]]("SERIES_NAME")
+
+      def seriesType = column[String]("SERIES_TYPE")
+
+      def deleted = column[Boolean]("DELETED", O.Default(false))
+
+      // Every table needs a * projection with the same type as the table's type parameter
+      def * = (id, dbID, key, name, seriesType, deleted)
+
+      def index_key = index("idx_serieskey", (key), unique = false)
+
+      def fk_db = foreignKey("series_db_fk", dbID, databases)(_.id)
+    }
+
+    val series = TableQuery[Series]
+
+    class Tags(tag: Tag) extends Table[(String, String)](tag, "SERIES_TAGS") {
+      def seriesID = column[String]("SERIES_ID")
+
+      def name = column[String]("TAG_NAME")
+
+      def * = (seriesID, name)
+
+      def fk_series = foreignKey("series_tag_fk", seriesID, series)(_.id)
+
+      def index_name = index("idx_tagsname", (name), unique = false)
+    }
+
+    val tags = TableQuery[Tags]
+
+    class Attributes(tag: Tag) extends Table[(String, String, String)](tag, "SERIES_ATTRIBUTES") {
+      def seriesID = column[String]("SERIES_ID")
+
+      def name = column[String]("ATTRIBUTE_NAME")
+
+      def value = column[String]("ATTRIBUTE_VALUE")
+
+      def * = (seriesID, name, value)
+
+      def fk_series = foreignKey("series_attributes_fk", seriesID, series)(_.id)
+
+      def index_name = index("idx_attributesname", (name), unique = false)
+    }
+
+    val attributes = TableQuery[Attributes]
+
+    class Devices(tag: Tag) extends Table[(String, String, String, Boolean, Boolean, Boolean, Int)](tag, "DEVICES") {
+      def id = column[String]("DEVICE_ID", O.PrimaryKey)
+
+      def deviceID = column[String]("DEVICE_OWN_ID")
+
+      def dbID = column[String]("DB_ID")
+
+      def activated = column[Boolean]("ACTIVATED")
+
+      def disabled = column[Boolean]("DISABLED")
+
+      def deleted = column[Boolean]("DELETED", O.Default(false))
+
+      def version = column[Int]("VERSION", O.Default(0))
+
+      def * = (id, deviceID, dbID, activated, disabled, deleted, version)
+
+      def fk_database = foreignKey("devices_db_fk", dbID, databases)(_.id)
+
+      def index_deviceID = index("idx_devicesdeviceID", (deviceID), unique = false)
+    }
+
+    val devices = TableQuery[Devices]
+
+    class DevicePermissions(tag: Tag) extends Table[(String, String)](tag, "DEVICE_PERMISSIONS") {
+      def id = column[String]("DEVICE_ID")
+
+      def devicePermission = column[String]("DEVICE_PERMISSION")
+
+      def * = (id, devicePermission)
+
+      def fk_device = foreignKey("device_permissions_device_fk", id, devices)(_.id)
+    }
+
+    val devicePermissions = TableQuery[DevicePermissions]
+
+    class AdminUsers(tag: Tag) extends Table[(String, Option[String], Option[String], String, String, String, Boolean, Boolean, Boolean, Boolean, Int)](tag, "ADMIN_USERS") {
+      def id = column[String]("ID", O.PrimaryKey)
+
+      def name = column[Option[String]]("NAME")
+
+      def surname = column[Option[String]]("SURNAME")
+
+      def username = column[String]("USERNAME")
+
+      def email = column[String]("EMAIL")
+
+      def credential = column[String]("CREDENTIAL")
+
+      def activated = column[Boolean]("ACTIVATED")
+
+      def confirmed = column[Boolean]("CONFIRMED")
+
+      def disabled = column[Boolean]("DISABLED")
+
+      def deleted = column[Boolean]("DELETED", O.Default(false))
+
+      def version = column[Int]("VERSION", O.Default(0))
+
+      def * = (id, name, surname, username, email, credential, activated, confirmed, disabled, deleted, version)
+
+      def index_email = index("idx_adminusersemail", (email), unique = true)
+
+      def index_username = index("idx_adminusersusername", (username), unique = true)
+
+      /*val adminByID = for {
+        id <- Parameters[String]
+        (((a, _), o), d) <- AdminUsers.where(a=> (a.id is id) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+      } yield (a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
+
+      /*val adminByEmail = for {
+        email <- Parameters[String]
+        (((a, _), o), d) <- AdminUsers.where(a => (a.email is email) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+      } yield (a.name, a.surname, a.username, a.id, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
+
+      /*val adminByUsername = for {
+        username <- Parameters[String]
+        (((a, _), o), d) <- AdminUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
+      } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
+    }
+
+    val adminUsers = TableQuery[AdminUsers]
+
+    def databaseByID(d: Databases, id: String) = (d.id is id) && (d.deleted is false)
+
+    def databaseByID(d: Databases, id: Column[String]) = (d.id is id) && (d.deleted is false)
+
+    def databaseByName(d: Databases, name: String) = (d.name is name) && (d.deleted is false)
+
+    def databaseByName(d: Databases, name: Column[String]) = (d.name is name) && (d.deleted is false)
+
+    def organizationByID(o: Organizations, id: String) = (o.id is id) && (o.deleted is false)
+
+    def organizationByID(o: Organizations, id: Column[String]) = (o.id is id) && (o.deleted is false)
+
+    def organizationByName(o: Organizations, name: String) = (o.name is name) && (o.deleted is false)
+
+    def organizationByName(o: Organizations, name: Column[String]) = (o.name is name) && (o.deleted is false)
+
+    def adminByID(a: AdminUsers, id: String) = (a.id is id) && (a.deleted is false)
+
+    def adminByID(a: AdminUsers, id: Column[String]) = (a.id is id) && (a.deleted is false)
+
+    val organizationByIDQuery = for {
+      id <- Parameters[String]
+      (o, d) <- organizations.where(org => organizationByID(org, id)) leftJoin databases.where(_.deleted is false) on (_.id === _.organization)
+    } yield (o.name, o.version, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)
+
+    val organizationInfoByIDQuery = for {
+      id <- Parameters[String]
+      o <- organizations if organizationByID(o, id)
+    } yield (o.name, o.version)
+
+    val organizationByNameQuery = for {
+      name <- Parameters[String]
+      (o, d) <- organizations.where(org => organizationByName(org, name)) leftJoin databases.where(_.deleted is false) on (_.id === _.organization)
+    } yield (o.id, o.version, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)
+
+    val organizationInfoByNameQuery = for {
+      name <- Parameters[String]
+      d <- databases
+      o <- organizations if (o.name is name) && (o.deleted is false)
+    } yield (o.id, o.version)
+
+    val databaseByIDQuery = for {
+      id <- Parameters[String]
+      o <- organizations
+      d <- databases if databaseByID(d, id) && organizationByID(o, d.organization)
+    } yield (d.name, d.oauthTTL, d.version)
+
+    val databaseInfoByIDQuery = for {
+      id <- Parameters[String]
+      o <- organizations
+      d <- databases if databaseByID(d, id) && organizationByID(o, d.organization)
+    } yield (d.name, d.version)
+
+    val databaseByNameOrgIDQuery = for {
+      (name, orgID) <- Parameters[(String, String)]
+      o <- organizations
+      d <- databases if databaseByName(d, name) && organizationByID(o, d.organization) && (d.organization is orgID)
+    } yield (d.id, d.oauthTTL, d.version)
+
+    val databaseInfoByNameOrgIDQuery = for {
+      (name, orgID) <- Parameters[(String, String)]
+      o <- organizations
+      d <- databases if databaseByName(d, name) && organizationByID(o, d.organization) && (d.organization is orgID)
+    } yield (d.id, d.version)
+
+    val seriesByIDQuery = for {
+      id <- Parameters[String]
+      t <- tags
+      a <- attributes
+      s <- series if (s.id is id) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false)
+    } yield (s.name, s.key, t.name, a.name, a.value, s.seriesType)
+
+    val seriesByKeyQuery = for {
+      (key, dbID) <- Parameters[(String, String)]
+      t <- tags
+      a <- attributes
+      s <- series if (s.key is key) && (s.dbID is dbID) && (s.id is t.seriesID) && (s.id is a.seriesID) && (s.deleted is false)
+    } yield (s.name, s.id, t.name, a.name, a.value, s.seriesType)
+
+    val deviceByIDQuery = for {
+      id <- Parameters[String]
+      db <- databases
+      p <- devicePermissions
+      d <- devices if (d.id is id) && (d.deleted is false) && (db.id is d.dbID) && (p.id is d.id)
+    } yield (d.deviceID, d.activated, d.disabled, p.devicePermission, d.version, db.id, db.name, d.version)
+
+    val deviceByDeviceIDQuery = for {
+      deviceID <- Parameters[String]
+      db <- databases
+      p <- devicePermissions
+      d <- devices if (d.deviceID is deviceID) && (d.deleted is false) && (db.id is d.dbID) && (p.id is d.id)
+    } yield (d.id, d.activated, d.disabled, p.devicePermission, d.version, db.id, db.name, d.version)
+
+    val checkAdminQuery = for {
+      adminID <- Parameters[String]
+      a <- adminUsers if adminByID(a, adminID)
+    } yield 1
+
+
+    class OrganizationAdmins(tag: Tag) extends Table[(String, String)](tag, "ORGANIZATION_ADMINS") {
+      def orgID = column[String]("ORGID")
+
+      def adminID = column[String]("ADMINID")
+
+      def * = (orgID, adminID)
+
+      def fk_organization = foreignKey("organization_admins_organization_fk", orgID, organizations)(_.id)
+
+      def fk_admin = foreignKey("organization_admins_admin_fk", adminID, adminUsers)(_.id)
+    }
+
+    val organizationAdmins = TableQuery[OrganizationAdmins]
+
+    def create(implicit session: Session) {
+      (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++ devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl).create
+    }
+
+    def drop(implicit session: Session) {
+      (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++ devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl).drop
+    }
+
+    def saveDatabase(database: domain.Database, orgID: UUID)(implicit session: Session) = {
+      if (databaseByNameOrgIDQuery(database.name, orgID.toString).firstOption.isDefined)
+        throw domain.DuplicateIDEntity(s"database with ${database.name} already exist!")
+      databases.map(d => (d.id, d.name, d.organization, d.oauthTTL)) +=(database.id.toString, database.name, orgID.toString, database.metadata.oauthTTL)
+      database
+    }
+
+    def deleteDatabase(dbID: UUID)(implicit session: Session) {
+      val database = for (d <- databases if d.id is dbID.toString) yield d.deleted
+      database.update(true)
+    }
+
+
+    def getDatabase(dbID: UUID)(implicit session: Session) = {
+      databaseByIDQuery(dbID.toString).firstOption.map(d => domain.Database(dbID, d._1, domain.DatabaseMetadata(d._2), d._3))
+    }
+
+    def getDatabaseInfo(dbID: UUID)(implicit session: Session) = {
+      databaseInfoByIDQuery(dbID.toString).firstOption.map(d => domain.DatabaseInfo(dbID, d._1, d._2))
+    }
+
+    def getDatabaseByName(name: String, orgID: UUID)(implicit session: Session) = {
+      databaseByNameOrgIDQuery(name, orgID.toString).firstOption.map(d => domain.Database(UUID.fromString(d._1), name, domain.DatabaseMetadata(d._2), d._3))
+    }
+
+    def getDatabaseInfoByName(name: String, orgID: UUID)(implicit session: Session) = {
+      databaseInfoByNameOrgIDQuery(name, orgID.toString).firstOption.map(d => domain.DatabaseInfo(UUID.fromString(d._1), name, d._2))
+    }
+
+    def checkEmpty[T, A](list: List[A])(body: => T): Option[T] = {
+      if (list == Nil)
+        None
+      else Some(body)
+    }
+
+    def getSeries(seriesID: UUID)(implicit session: Session) = {
+      val list = seriesByIDQuery(seriesID.toString).list
+      checkEmpty(list) {
+        val tags = (for (s <- list) yield s._3).toSet
+        val attributes = (for (s <- list) yield (s._4, s._5)).toMap
+        domain.Series(seriesID, list.head._2, list.head._1, tags, attributes, SeriesType.withName(list.head._6))
+      }
+    }
+
+    def getSeriesSet(seriesID: Set[UUID])(implicit session: Session) = {
+      if (seriesID.isEmpty) Set[domain.Series]()
+      else {
+        val list = (for {
+          t <- tags
+          a <- attributes
+          s <- series if (s.id inSet seriesID.map(_.toString)) && (s.deleted is false) && (s.id is a.seriesID) && (s.id is t.seriesID)
+        } yield (s.id, s.key, s.name, t.name, a.name, a.value, s.seriesType)).list
+        extractSeries(list).toSet
+      }
+    }
+
+
+    private def extractSeries(list: List[(String, String, Option[String], String, String, String, String)]): List[domain.Series] = {
+      if (list.isEmpty)
+        Nil
+      else {
+        val series = list.groupBy(_._1)
+        series.map {
+          case (seriesID, data) =>
+            val tags = (for (s <- data) yield s._4).toSet
+            val attributes = (for (s <- data) yield (s._5, s._6)).toMap
+            domain.Series(UUID.fromString(seriesID), data.head._2, data.head._3, tags, attributes, SeriesType.withName(data.head._7))
+        }.toList
+      }
+    }
+
+    def getSeriesByKey(key: String, dbID: UUID)(implicit session: Session) = {
+      val list = seriesByKeyQuery(key, dbID.toString).list
+      checkEmpty(list) {
+        val name = list.head._1
+        val id = UUID.fromString(list.head._2)
+        val tags = (for (s <- list) yield s._3).toSet
+        val attributes = (for (s <- list) yield (s._4, s._5)).toMap
+        domain.Series(id, key, name, tags, attributes, SeriesType.withName(list.head._6))
+      }
+    }
+
+    def getSeriesByKeys(keys: Set[String], dbID: UUID)(implicit session: Session) = {
+      val list = (for {
+        t <- tags
+        a <- attributes
+        s <- series if (s.key inSet keys.map(_.toString)) && (s.dbID is dbID.toString) && (s.deleted is false) && (s.id is a.seriesID) && (s.id is t.seriesID)
+      } yield (s.id, s.key, s.name, t.name, a.name, a.value, s.seriesType)).list
+      extractSeries(list).toSet
+    }
+
+    def getSeriesIdsByKeys(keys: Set[String], dbID: UUID)(implicit session: Session) = {
+      (for {
+        t <- tags
+        a <- attributes
+        s <- series if (s.key inSet keys.map(_.toString)) && (s.dbID is dbID.toString) && (s.deleted is false) && (s.id is a.seriesID) && (s.id is t.seriesID)
+      } yield s.id).list.toSet
+    }
+
+    def insertTags(seriesID: String, tagsValues: Set[String])(implicit session: Session) {
+      tags ++= (for (t <- tagsValues) yield (seriesID, t)).toSeq
+    }
+
+    def deleteTags(seriesID: UUID)(implicit session: Session) {
+      (for (t <- tags if t.seriesID is seriesID.toString) yield t).delete
+    }
+
+    def deleteAttributes(seriesID: UUID)(implicit session: Session) {
+      (for (a <- attributes if a.seriesID is seriesID.toString) yield a).delete
+    }
+
+    def insertAttributes(seriesID: String, attributesValues: Map[String, String])(implicit session: Session) {
+      attributes ++= (for ((attr, value) <- attributesValues) yield (seriesID, attr, value)).toSeq
+    }
+
+    def saveSeries(seriesValue: domain.Series, dbID: UUID)(implicit session: Session) {
+      if (seriesByKeyQuery(seriesValue.key, dbID.toString).firstOption.isDefined)
+        throw domain.DuplicateIDEntity(s"series with key ${seriesValue.key} is alread defined!")
+      else {
+        val seriesID: String = seriesValue.id.toString
+        series.map(s => (s.id, s.dbID, s.key, s.name, s.seriesType)) +=(seriesID, dbID.toString, seriesValue key, seriesValue.name, seriesValue.`type`.toString)
+        insertTags(seriesID, seriesValue.tags)
+        insertAttributes(seriesID, seriesValue.attributes)
+      }
+    }
+
+    def updateSeries(seriesValue: domain.Series)(implicit session: Session) = {
+      val q = for {s <- series if (s.id is seriesValue.id.toString) && (s.deleted is false)} yield s.name
+      val count = q.update(seriesValue.name)
+      if (count > 0) {
+        None
+      } else {
+        deleteTags(seriesValue.id)
+        deleteAttributes(seriesValue.id)
+        insertTags(seriesValue.id.toString, seriesValue.tags)
+        insertAttributes(seriesValue.id.toString, seriesValue.attributes)
+        Some(seriesValue)
+      }
+    }
+
+    private def getSeriesByTagsInner(tags: Set[String], dbID: UUID)(implicit session: Session) = {
+      val inner = """SELECT s."SERIES_ID" FROM SERIES AS s
+                  JOIN SERIES_TAGS AS t ON s."SERIES_ID" = t."SERIES_ID"
+                  WHERE s."DB_ID"=?  and s."DELETED"=false and t."TAG_NAME"
+                  IN """ + tags.map("'" + _ + "'").mkString("(", ",", ")") +
+        """ GROUP BY s."SERIES_ID" HAVING count(DISTINCT t."TAG_NAME") = """ + tags.size
+      //TODO convert to inner query
+      Q.query[String, String](inner).list(dbID.toString).toSet
+    }
+
+    def getSeriesByTags(tags: Set[String], dbID: UUID)(implicit session: Session) = getSeriesSet(getSeriesByTagsInner(tags, dbID).map(UUID.fromString))
+
+    private def getSeriesByAttributesInner(attributes: Map[String, String], dbID: UUID)(implicit session: Session) = {
+      val start = """select distinct s."SERIES_ID"
+    from SERIES AS s
+                  """
+      val end =
+        """
+      where s."DB_ID"=? and s."DELETED"=false """
+      val query = start + attributes.zipWithIndex.map(v => s"""inner join SERIES_ATTRIBUTES a${v._2} on a${v._2}.series_id=s.series_id and a${v._2}.\"ATTRIBUTE_NAME\"='${v._1._1}' and a${v._2}.\"ATTRIBUTE_VALUE\"='${v._1._2}'""").mkString("\n") + end
+      Q.query[String, String](query).list(dbID.toString).toSet
+    }
+
+    def getSeriesByAttributes(attributes: Map[String, String], dbID: UUID)(implicit session: Session) = getSeriesSet(getSeriesByAttributesInner(attributes, dbID).map(UUID.fromString))
+
+
+    def getSeriesIntersection(ids: Set[UUID], keys: Set[String], tags: Set[String], attributes: Map[String, String], dbID: UUID)(implicit session: Session) = {
+      def inner(previous: Option[Set[String]], in: Iterable[_], f: () => Set[String]) = {
+        if (in.isEmpty) previous else if (previous.isDefined) Some(previous.get.intersect(f())) else Some(f())
+      }
+      var result = inner(None, ids, () => ids.map(_.toString))
+      result = inner(result, keys, () => getSeriesIdsByKeys(keys, dbID))
+      result = inner(result, tags, () => getSeriesByTagsInner(tags, dbID))
+      result = inner(result, attributes, () => getSeriesByAttributesInner(attributes, dbID))
+      result.map(x => getSeriesSet(x.map(UUID.fromString))).getOrElse(Set[domain.Series]())
+    }
+
+    def deleteAllSeries(dbID: String)(implicit session: Session) {
+      val seriesQ = for (s <- series if (s.dbID is dbID) && (s.deleted is false)) yield s.deleted
+      seriesQ.update(true)
+    }
+
+    def extractDatabases(orgs: List[(String, Int, Option[String], Option[String], Option[Long], Option[Int])]): Set[domain.Database] = orgs.collect {
+      case (_, _, Some(id), Some(name), Some(ttl), Some(version)) => domain.Database(UUID.fromString(id), name, domain.DatabaseMetadata(ttl), version)
+    }.toSet
+
+
+    def getOrganizationByID(orgID: UUID)(implicit session: Session) = {
+      val orgs = organizationByIDQuery(orgID.toString).list
+      checkEmpty(orgs) {
+        domain.Organization(orgID, orgs.head._1, extractDatabases(orgs), orgs.head._2)
+      }
+    }
+
+    def getOrganizationByName(orgName: String)(implicit session: Session) = {
+      val orgs = organizationByNameQuery(orgName).list
+      checkEmpty(orgs) {
+        domain.Organization(UUID.fromString(orgs.head._1), orgName, extractDatabases(orgs), orgs.head._2)
+      }
+    }
+
+    def saveOrganization(org: Organization)(implicit session: Session) {
+      if (organizationByNameQuery(org.name).firstOption.isDefined)
+        throw domain.DuplicateIDEntity(s"organization with ${org.name} is already defined!")
+      else
+        organizations.map(o => (o.id, o.name)) +=(org.id.toString, org.name)
+    }
+
+    def getDeviceByID(id: UUID)(implicit session: Session) = {
+      val devices = deviceByIDQuery(id.toString).list
+      checkEmpty(devices) {
+        val head = devices.head
+        domain.Device(id, head._1, domain.DatabaseInfo(UUID.fromString(head._6), head._7, head._8), head._2, head._3, devices.map(_._4).toSet, head._5)
+      }
+    }
+
+    def getDeviceByDeviceID(deviceID: String)(implicit session: Session) = {
+      val devices = deviceByDeviceIDQuery(deviceID).list
+      checkEmpty(devices) {
+        val head = devices.head
+        domain.Device(UUID.fromString(head._1), deviceID, domain.DatabaseInfo(UUID.fromString(head._6), head._7, head._8), head._2, head._3, devices.map(_._4).toSet, head._5)
+      }
+    }
+
+    def saveDevice(device: domain.Device)(implicit session: Session) = {
+      if (deviceByDeviceIDQuery(device.deviceID).firstOption.isDefined)
+        throw domain.DuplicateIDEntity(s"device with ${device.deviceID} is already defined!")
+      else {
+        devices.map(d => (d.id, d.deviceID, d.activated, d.disabled, d.dbID)) +=(device.id.toString, device.deviceID, device.activated, device.disabled, device.databaseRef.id.toString)
+        devicePermissions ++= device.permissions.map(p => (device.id.toString, p)).toSeq
+      }
+    }
+
+    protected def extractOrganizationFromAdminList(admins: List[(Option[String], Option[String], String, String, String, Boolean, Boolean, Boolean, Int, Option[String], Option[String], Option[Int], Option[String], Option[String], Option[Long], Option[Int])]): Set[domain.Organization] = admins.groupBy(_._10).map {
+      r =>
+        (r._1, r._2.head._11, r._2.head._12) match {
+          case (None, None, None) => None
+          case (Some(orgID), Some(orgName), Some(version)) =>
+            Some(domain.Organization(UUID.fromString(orgID), orgName, r._2.map {
+              d =>
+                (d._13, d._14, d._15, d._16) match {
+                  case (None, None, None, None) => None
+                  case (Some(dbid), Some(dbname), Some(oauthttl), Some(version)) => Some(domain.Database(UUID.fromString(dbid), dbname, domain.DatabaseMetadata(oauthttl), version))
+                  case _ => throw new IllegalArgumentException(s"illegal row ${r._2}")
+                }
+            }.flatten.toSet, version))
+          case _ => throw new IllegalArgumentException(s"illegal row ${r._2}")
+        }
+    }.flatten.toSet
+
+    def isAdminExist(id: UUID)(implicit session: Session) = checkAdminQuery(id.toString).firstOption.isDefined
+
+    def getAdminByID(id: UUID)(implicit session: Session) = {
+      val admins = (for {
+        (((a, _), o), d) <- adminUsers.where(a => (a.id is id.toString) && (a.deleted is false)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
+      } yield (a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)).list
+      checkEmpty(admins) {
+        val head = admins.head
+        domain.AdminUser(id, head._1, head._2, head._3, head._4, head._5, head._6, head._7, head._8,
+          extractOrganizationFromAdminList(admins), head._9)
+      }
+    }
+
+
+    def getAdminByEmail(email: String)(implicit session: Session) = {
+      val admins = (for {
+        (((a, _), o), d) <- adminUsers.where(a => (a.email is email) && (a.deleted is false)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
+      } yield (a.name, a.surname, a.username, a.id, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)).list
+      checkEmpty(admins) {
+        val head = admins.head
+        domain.AdminUser(UUID.fromString(head._4), head._1, head._2, head._3, email, head._5, head._6, head._7, head._8,
+          extractOrganizationFromAdminList(admins), head._9)
+      }
+    }
+
+    def getAdminByUsername(username: String)(implicit session: Session) = {
+      val admins = (for {
+        (((a, _), o), d) <- adminUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
+      } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)).list
+      checkEmpty(admins) {
+        val head = admins.head
+        domain.AdminUser(UUID.fromString(head._3), head._1, head._2, username, head._4, head._5, head._6, head._7,
+          head._8, extractOrganizationFromAdminList(admins), head._9)
+      }
+    }
+
+    def saveAdminUser(admin: domain.AdminUser)(implicit session: Session) {
+      val adminOption = getAdminByEmail(admin.email).map(v => v.email).orElse(getAdminByUsername(admin.username).map(v => v.username))
+      if (adminOption.isDefined)
+        throw domain.DuplicateIDEntity(s"admin user with ${adminOption.get} is already defined!")
+      else {
+        adminUsers.map(a => (a.id, a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled)) +=(admin.id.toString,
+          admin.name, admin.surname, admin.username, admin.email, admin.credential, admin.activated, admin.confirmed, admin.disabled)
+      }
+    }
+
+    def getOrganizationInfoByID(uuid: UUID)(implicit session: Session): Option[OrganizationInfo] = organizationInfoByIDQuery(uuid.toString).firstOption.map(r => OrganizationInfo(uuid, r._1, r._2))
+
+    def addAdminToOrganization(adminID: UUID, orgID: UUID)(implicit session: Session) {
+      organizationAdmins +=(orgID.toString, adminID.toString)
+    }
+  }
+
+}

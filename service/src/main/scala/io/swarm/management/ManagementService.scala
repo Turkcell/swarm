@@ -17,7 +17,6 @@
 package io.swarm.management
 
 import io.swarm.domain._
-import io.swarm.domain.OrganizationInfo
 import io.swarm.domain.DatabaseInfo
 import java.util.UUID
 import scala.concurrent._
@@ -38,7 +37,7 @@ trait ManagementServiceComponent {
       """(\w+)@([\w\.]+)""".r.unapplySeq(email).isDefined
 
     def createSandBoxDB(): Database = {
-      Database(UUIDGenerator.randomGenerator.generate(), "sandbox", DatabaseMetadata(Config.defaultDBOauthTTL))
+      Database(UUIDGenerator.randomGenerator.generate(), "sandbox", DatabaseMetadata(Config.defaultDBOauthTTL), 0)
     }
 
     def createOrganizationWithAdmin(organizationName: String, name: Option[String], surname: Option[String], username: String, email: String, password: String): (Organization, UserInfo) = isAnonymous {
@@ -46,10 +45,10 @@ trait ManagementServiceComponent {
       require(email != null && isValidEmail(email), "email should be correct!")
       persistenceSession withTransaction {
         val org = if (Config.enableSandBoxDB)
-          resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set(createSandBoxDB())))
+          resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set(createSandBoxDB()), 0))
         else
-          resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set()))
-        val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), name, surname, username, email, HashedAlgorithm.toHex(password), activated = !Config.adminUsersRequireActivation, confirmed = !Config.adminUsersRequireConfirmation, disabled = false, Set(org))
+          resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set(), 0))
+        val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), name, surname, username, email, HashedAlgorithm.toHex(password), activated = !Config.adminUsersRequireActivation, confirmed = !Config.adminUsersRequireConfirmation, disabled = false, Set(org), 0)
         clientRepository.saveAdminUser(admin)
         //TODO should trigger admin flow
         resourceRepository.addAdminToOrganization(org.id, admin.id)
@@ -59,11 +58,6 @@ trait ManagementServiceComponent {
 
     def createDatabase(name: String, orgID: UUID): Database
 
-    def getOrganizationInfo(orgID: UUID): Option[OrganizationInfo] = resourceRepository.getOrganizationInfo(orgID)
-
-    def getOrganizationInfoAsync(orgID: UUID): Future[Option[OrganizationInfo]] = future {
-      resourceRepository.getOrganizationInfo(orgID)
-    }
 
     def getDatabaseInfo(dbID: UUID): Option[DatabaseInfo] = resourceRepository.getDatabaseInfo(dbID)
 

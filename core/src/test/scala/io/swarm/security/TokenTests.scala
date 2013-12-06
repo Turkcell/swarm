@@ -38,10 +38,10 @@ import io.swarm.domain.Device
  */
 @RunWith(classOf[JUnitRunner])
 class TokenTests extends FlatSpec with ShouldMatchers {
-  val database = Database(UUIDGenerator.randomGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24))
-  val org = Organization(UUIDGenerator.randomGenerator.generate(), "testorg", Set(database))
-  val tmpAdminUser = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false, Set(org))
-  val tmpDBUser = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false, Set())
+  val database = Database(UUIDGenerator.randomGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24), 0)
+  val org = Organization(UUIDGenerator.randomGenerator.generate(), "testorg", Set(database), 0)
+  val tmpAdminUser = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false, Set(org), 0)
+  val tmpDBUser = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false, Set(), 0)
   "token " should " construct an OauthBearerToken" in {
     val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.randomGenerator.generate()), 0.toDuration, 0)
     val direct = OauthBearerToken(tokenInfo)
@@ -93,10 +93,10 @@ class TokenTests extends FlatSpec with ShouldMatchers {
   }
 
   "client id " should " should construct a ClientID" in {
-    val org = ClientID(OrganizationInfo(UUIDGenerator.randomGenerator.generate(), "org"))
-    val dbInfo = DatabaseInfo(UUIDGenerator.randomGenerator.generate(), "db")
+    val org = ClientID(OrganizationInfo(UUIDGenerator.randomGenerator.generate(), "org", 0))
+    val dbInfo = DatabaseInfo(UUIDGenerator.randomGenerator.generate(), "db", 0)
     val db = ClientID(dbInfo)
-    val dev = ClientID(Device(UUIDGenerator.randomGenerator.generate(), "device", dbInfo, true, false, Set()))
+    val dev = ClientID(Device(UUIDGenerator.randomGenerator.generate(), "device", dbInfo, true, false, Set(), 0))
 
     org shouldBe ClientID(org.id)
     db shouldBe ClientID(db.id)
