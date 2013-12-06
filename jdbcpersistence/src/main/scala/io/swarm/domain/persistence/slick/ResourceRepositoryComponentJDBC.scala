@@ -3,7 +3,7 @@ package io.swarm.domain.persistence.slick
 import io.swarm.domain._
 import java.util.UUID
 import io.swarm.domain.Organization
-import io.swarm.persistence.PersistenceSessionComponent
+import io.swarm.infrastructure.persistence.PersistenceSessionComponent
 
 /**
  * Created by Anil Chalil on 12/4/13.
@@ -11,7 +11,7 @@ import io.swarm.persistence.PersistenceSessionComponent
 trait ResourceRepositoryComponentJDBC extends ResourceRepositoryComponent {
   this: ClientResourceDaoComponent with PersistenceSessionComponent =>
 
-  import scala.slick.jdbc.JdbcBackend.Database.dynamicSession
+
 
   val resourceRepository: ResourceRepository = new ResourceRepository {
     def saveOrganization(org: Organization): Organization = {

@@ -4,7 +4,7 @@ import io.swarm.domain
 import java.util.UUID
 import scala.slick.jdbc.{StaticQuery => Q}
 import io.swarm.domain.{OrganizationInfo, Organization, SeriesType}
-import io.swarm.persistence.slick.SlickProfileComponent
+import io.swarm.infrastructure.persistence.slick.SlickProfileComponent
 
 
 trait ClientResourceDaoComponent {
@@ -17,7 +17,7 @@ trait ClientResourceDaoComponent {
     //...to be able import profile.simple._
 
     import profile.simple._
-
+    import Database.dynamicSession
 
     // Definition of the Organizations table
     class Organizations(tag: Tag) extends Table[(String, String, Boolean, Int)](tag, "Organizations") {
@@ -373,42 +373,42 @@ trait ClientResourceDaoComponent {
       (a, p) <- databaseUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin databaseUserPermissions on (_.id === _.id)
     } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, p.userPermission.?)
 
-    def create(implicit session: Session) {
+    def create {
       (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++
         devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ databaseUsers.ddl ++ databaseUserPermissions.ddl).create
     }
 
-    def drop(implicit session: Session) {
+    def drop {
       (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++
         devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ databaseUsers.ddl ++ databaseUserPermissions.ddl).drop
     }
 
-    def saveDatabase(database: domain.Database, orgID: UUID)(implicit session: Session) = {
+    def saveDatabase(database: domain.Database, orgID: UUID) = {
       if (databaseByNameOrgIDQuery(database.name, orgID.toString).firstOption.isDefined)
         throw domain.DuplicateIDEntity(s"database with ${database.name} already exist!")
       databases.map(d => (d.id, d.name, d.organization, d.oauthTTL)) +=(database.id.toString, database.name, orgID.toString, database.metadata.oauthTTL)
       database
     }
 
-    def deleteDatabase(dbID: UUID)(implicit session: Session) {
+    def deleteDatabase(dbID: UUID) {
       val database = for (d <- databases if d.id is dbID.toString) yield d.deleted
       database.update(true)
     }
 
 
-    def getDatabase(dbID: UUID)(implicit session: Session) = {
+    def getDatabase(dbID: UUID) = {
       databaseByIDQuery(dbID.toString).firstOption.map(d => domain.Database(dbID, d._1, domain.DatabaseMetadata(d._2), d._3))
     }
 
-    def getDatabaseInfo(dbID: UUID)(implicit session: Session) = {
+    def getDatabaseInfo(dbID: UUID) = {
       databaseInfoByIDQuery(dbID.toString).firstOption.map(d => domain.DatabaseInfo(dbID, d._1, d._2))
     }
 
-    def getDatabaseByName(name: String, orgID: UUID)(implicit session: Session) = {
+    def getDatabaseByName(name: String, orgID: UUID) = {
       databaseByNameOrgIDQuery(name, orgID.toString).firstOption.map(d => domain.Database(UUID.fromString(d._1), name, domain.DatabaseMetadata(d._2), d._3))
     }
 
-    def getDatabaseInfoByName(name: String, orgID: UUID)(implicit session: Session) = {
+    def getDatabaseInfoByName(name: String, orgID: UUID) = {
       databaseInfoByNameOrgIDQuery(name, orgID.toString).firstOption.map(d => domain.DatabaseInfo(UUID.fromString(d._1), name, d._2))
     }
 
@@ -418,7 +418,7 @@ trait ClientResourceDaoComponent {
       else Some(body)
     }
 
-    def getSeries(seriesID: UUID)(implicit session: Session) = {
+    def getSeries(seriesID: UUID) = {
       val list = seriesByIDQuery(seriesID.toString).list
       checkEmpty(list) {
         val tags = (for (s <- list) yield s._3).toSet
@@ -427,7 +427,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def getSeriesSet(seriesID: Set[UUID])(implicit session: Session) = {
+    def getSeriesSet(seriesID: Set[UUID]) = {
       if (seriesID.isEmpty) Set[domain.Series]()
       else {
         val list = (for {
@@ -454,7 +454,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def getSeriesByKey(key: String, dbID: UUID)(implicit session: Session) = {
+    def getSeriesByKey(key: String, dbID: UUID) = {
       val list = seriesByKeyQuery(key, dbID.toString).list
       checkEmpty(list) {
         val name = list.head._1
@@ -465,7 +465,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def getSeriesByKeys(keys: Set[String], dbID: UUID)(implicit session: Session) = {
+    def getSeriesByKeys(keys: Set[String], dbID: UUID) = {
       val list = (for {
         t <- tags
         a <- attributes
@@ -474,7 +474,7 @@ trait ClientResourceDaoComponent {
       extractSeries(list).toSet
     }
 
-    def getSeriesIdsByKeys(keys: Set[String], dbID: UUID)(implicit session: Session) = {
+    def getSeriesIdsByKeys(keys: Set[String], dbID: UUID) = {
       (for {
         t <- tags
         a <- attributes
@@ -482,23 +482,23 @@ trait ClientResourceDaoComponent {
       } yield s.id).list.toSet
     }
 
-    def insertTags(seriesID: String, tagsValues: Set[String])(implicit session: Session) {
+    def insertTags(seriesID: String, tagsValues: Set[String]) {
       tags ++= (for (t <- tagsValues) yield (seriesID, t)).toSeq
     }
 
-    def deleteTags(seriesID: UUID)(implicit session: Session) {
+    def deleteTags(seriesID: UUID) {
       (for (t <- tags if t.seriesID is seriesID.toString) yield t).delete
     }
 
-    def deleteAttributes(seriesID: UUID)(implicit session: Session) {
+    def deleteAttributes(seriesID: UUID) {
       (for (a <- attributes if a.seriesID is seriesID.toString) yield a).delete
     }
 
-    def insertAttributes(seriesID: String, attributesValues: Map[String, String])(implicit session: Session) {
+    def insertAttributes(seriesID: String, attributesValues: Map[String, String]) {
       attributes ++= (for ((attr, value) <- attributesValues) yield (seriesID, attr, value)).toSeq
     }
 
-    def saveSeries(seriesValue: domain.Series, dbID: UUID)(implicit session: Session) {
+    def saveSeries(seriesValue: domain.Series, dbID: UUID) {
       if (seriesByKeyQuery(seriesValue.key, dbID.toString).firstOption.isDefined)
         throw domain.DuplicateIDEntity(s"series with key ${seriesValue.key} is alread defined!")
       else {
@@ -509,7 +509,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def updateSeries(seriesValue: domain.Series)(implicit session: Session) = {
+    def updateSeries(seriesValue: domain.Series) = {
       val q = for {s <- series if (s.id is seriesValue.id.toString) && (s.deleted is false)} yield s.name
       val count = q.update(seriesValue.name)
       if (count > 0) {
@@ -523,7 +523,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    private def getSeriesByTagsInner(tags: Set[String], dbID: UUID)(implicit session: Session) = {
+    private def getSeriesByTagsInner(tags: Set[String], dbID: UUID) = {
       val inner = """SELECT s."SERIES_ID" FROM SERIES AS s
                   JOIN SERIES_TAGS AS t ON s."SERIES_ID" = t."SERIES_ID"
                   WHERE s."DB_ID"=?  and s."DELETED"=false and t."TAG_NAME"
@@ -533,9 +533,9 @@ trait ClientResourceDaoComponent {
       Q.query[String, String](inner).list(dbID.toString).toSet
     }
 
-    def getSeriesByTags(tags: Set[String], dbID: UUID)(implicit session: Session) = getSeriesSet(getSeriesByTagsInner(tags, dbID).map(UUID.fromString))
+    def getSeriesByTags(tags: Set[String], dbID: UUID) = getSeriesSet(getSeriesByTagsInner(tags, dbID).map(UUID.fromString))
 
-    private def getSeriesByAttributesInner(attributes: Map[String, String], dbID: UUID)(implicit session: Session) = {
+    private def getSeriesByAttributesInner(attributes: Map[String, String], dbID: UUID) = {
       val start = """select distinct s."SERIES_ID"
     from SERIES AS s
                   """
@@ -546,10 +546,10 @@ trait ClientResourceDaoComponent {
       Q.query[String, String](query).list(dbID.toString).toSet
     }
 
-    def getSeriesByAttributes(attributes: Map[String, String], dbID: UUID)(implicit session: Session) = getSeriesSet(getSeriesByAttributesInner(attributes, dbID).map(UUID.fromString))
+    def getSeriesByAttributes(attributes: Map[String, String], dbID: UUID) = getSeriesSet(getSeriesByAttributesInner(attributes, dbID).map(UUID.fromString))
 
 
-    def getSeriesIntersection(ids: Set[UUID], keys: Set[String], tags: Set[String], attributes: Map[String, String], dbID: UUID)(implicit session: Session) = {
+    def getSeriesIntersection(ids: Set[UUID], keys: Set[String], tags: Set[String], attributes: Map[String, String], dbID: UUID) = {
       def inner(previous: Option[Set[String]], in: Iterable[_], f: () => Set[String]) = {
         if (in.isEmpty) previous else if (previous.isDefined) Some(previous.get.intersect(f())) else Some(f())
       }
@@ -560,7 +560,7 @@ trait ClientResourceDaoComponent {
       result.map(x => getSeriesSet(x.map(UUID.fromString))).getOrElse(Set[domain.Series]())
     }
 
-    def deleteAllSeries(dbID: String)(implicit session: Session) {
+    def deleteAllSeries(dbID: String) {
       val seriesQ = for (s <- series if (s.dbID is dbID) && (s.deleted is false)) yield s.deleted
       seriesQ.update(true)
     }
@@ -570,28 +570,28 @@ trait ClientResourceDaoComponent {
     }.toSet
 
 
-    def getOrganizationByID(orgID: UUID)(implicit session: Session) = {
+    def getOrganizationByID(orgID: UUID) = {
       val orgs = organizationByIDQuery(orgID.toString).list
       checkEmpty(orgs) {
         domain.Organization(orgID, orgs.head._1, extractDatabases(orgs), orgs.head._2)
       }
     }
 
-    def getOrganizationByName(orgName: String)(implicit session: Session) = {
+    def getOrganizationByName(orgName: String) = {
       val orgs = organizationByNameQuery(orgName).list
       checkEmpty(orgs) {
         domain.Organization(UUID.fromString(orgs.head._1), orgName, extractDatabases(orgs), orgs.head._2)
       }
     }
 
-    def saveOrganization(org: Organization)(implicit session: Session) {
+    def saveOrganization(org: Organization) {
       if (organizationByNameQuery(org.name).firstOption.isDefined)
         throw domain.DuplicateIDEntity(s"organization with ${org.name} is already defined!")
       else
         organizations.map(o => (o.id, o.name)) +=(org.id.toString, org.name)
     }
 
-    def getDeviceByID(id: UUID)(implicit session: Session) = {
+    def getDeviceByID(id: UUID) = {
       val devices = deviceByIDQuery(id.toString).list
       checkEmpty(devices) {
         val head = devices.head
@@ -599,7 +599,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def getDeviceByDeviceID(deviceID: String)(implicit session: Session) = {
+    def getDeviceByDeviceID(deviceID: String) = {
       val devices = deviceByDeviceIDQuery(deviceID).list
       checkEmpty(devices) {
         val head = devices.head
@@ -607,7 +607,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def saveDevice(device: domain.Device)(implicit session: Session) = {
+    def saveDevice(device: domain.Device) = {
       if (deviceByDeviceIDQuery(device.deviceID).firstOption.isDefined)
         throw domain.DuplicateIDEntity(s"device with ${device.deviceID} is already defined!")
       else {
@@ -633,9 +633,9 @@ trait ClientResourceDaoComponent {
         }
     }.flatten.toSet
 
-    def isAdminExist(id: UUID)(implicit session: Session) = checkAdminQuery(id.toString).firstOption.isDefined
+    def isAdminExist(id: UUID) = checkAdminQuery(id.toString).firstOption.isDefined
 
-    def getAdminByID(id: UUID)(implicit session: Session) = {
+    def getAdminByID(id: UUID) = {
       val admins = adminByIDQuery(id.toString).list
       checkEmpty(admins) {
         val head = admins.head
@@ -645,7 +645,7 @@ trait ClientResourceDaoComponent {
     }
 
 
-    def getAdminByEmail(email: String)(implicit session: Session) = {
+    def getAdminByEmail(email: String) = {
       val admins = adminByEmailQuery(email).list
       checkEmpty(admins) {
         val head = admins.head
@@ -654,7 +654,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def getAdminByUsername(username: String)(implicit session: Session) = {
+    def getAdminByUsername(username: String) = {
       val admins = adminByUsernameQuery(username).list
       checkEmpty(admins) {
         val head = admins.head
@@ -663,7 +663,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def saveAdminUser(admin: domain.AdminUser)(implicit session: Session) {
+    def saveAdminUser(admin: domain.AdminUser) {
       val adminOption = getAdminByEmail(admin.email).map(v => v.email).orElse(getAdminByUsername(admin.username).map(v => v.username))
       if (adminOption.isDefined)
         throw domain.DuplicateIDEntity(s"admin user with ${adminOption.get} is already defined!")
@@ -673,13 +673,13 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def getOrganizationInfoByID(uuid: UUID)(implicit session: Session): Option[OrganizationInfo] = organizationInfoByIDQuery(uuid.toString).firstOption.map(r => OrganizationInfo(uuid, r._1, r._2))
+    def getOrganizationInfoByID(uuid: UUID): Option[OrganizationInfo] = organizationInfoByIDQuery(uuid.toString).firstOption.map(r => OrganizationInfo(uuid, r._1, r._2))
 
-    def addAdminToOrganization(adminID: UUID, orgID: UUID)(implicit session: Session) {
+    def addAdminToOrganization(adminID: UUID, orgID: UUID) {
       organizationAdmins +=(orgID.toString, adminID.toString)
     }
 
-    def getUserByID(id: UUID)(implicit session: Session) = {
+    def getUserByID(id: UUID) = {
       val users = userByIDQuery(id.toString).list
       checkEmpty(users) {
         val head = users.head
@@ -687,7 +687,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def getUserByEmail(email: String)(implicit session: Session) = {
+    def getUserByEmail(email: String) = {
       val users = userByEmailQuery(email).list
       checkEmpty(users) {
         val head = users.head
@@ -695,7 +695,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def getUserByUsername(username: String)(implicit session: Session) = {
+    def getUserByUsername(username: String) = {
       val users = userByUsernameQuery(username).list
       checkEmpty(users) {
         val head = users.head
@@ -703,7 +703,7 @@ trait ClientResourceDaoComponent {
       }
     }
 
-    def saveUser(user: domain.DatabaseUser)(implicit session: Session) {
+    def saveUser(user: domain.DatabaseUser) {
       val userOption = getUserByEmail(user.email).map(v => v.email).orElse(getUserByUsername(user.username).map(v => v.username))
       if (userOption.isDefined)
         throw domain.DuplicateIDEntity(s"user with ${userOption.get} is already defined!")

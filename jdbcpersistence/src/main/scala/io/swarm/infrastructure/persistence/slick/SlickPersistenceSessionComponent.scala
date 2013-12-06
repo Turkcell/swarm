@@ -1,7 +1,7 @@
-package io.swarm.persistence.slick
+package io.swarm.infrastructure.persistence.slick
 
-import io.swarm.persistence.{PersistenceSessionComponent, PersistenceSession}
 import scala.slick.jdbc.JdbcBackend
+import io.swarm.infrastructure.persistence.{PersistenceSessionComponent, PersistenceSession}
 
 
 trait SlickPersistenceSessionComponent extends PersistenceSessionComponent {

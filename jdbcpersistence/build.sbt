@@ -1,4 +1,4 @@
-name := "jdbc-persistence"
+name := "jdbcpersistence"
 
 libraryDependencies ++= Seq(
   // use the right Slick version here:

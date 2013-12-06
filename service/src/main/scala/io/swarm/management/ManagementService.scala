@@ -23,7 +23,7 @@ import scala.concurrent._
 import ExecutionContext.Implicits.global
 import io.swarm.security.{HashedAlgorithm, AnonymousAuthorizer, TokenRepositoryComponent}
 import io.swarm.{Config, UUIDGenerator}
-import io.swarm.persistence.PersistenceSessionComponent
+import io.swarm.infrastructure.persistence.PersistenceSessionComponent
 
 /**
  * Created by Anil Chalil on 11/1/13.

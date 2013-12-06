@@ -1,18 +1,16 @@
 package io.swarm.domain.persistence.slick
 
 import io.swarm.domain._
-import io.swarm.persistence.PersistenceSessionComponent
 import java.util.UUID
 import io.swarm.domain.Device
 import io.swarm.domain.DatabaseUser
+import io.swarm.infrastructure.persistence.PersistenceSessionComponent
 
 /**
  * Created by Anil Chalil on 12/6/13.
  */
 trait ClientRepositoryComponentSlick extends ClientRepositoryComponent {
   this: ClientResourceDaoComponent with PersistenceSessionComponent =>
-
-  import scala.slick.jdbc.JdbcBackend.Database.dynamicSession
 
   val clientRepository = new ClientRepository {
     def getDatabaseUserByUsername(username: String): Option[UserInfo] = clientResourceDao.getUserByUsername(username)

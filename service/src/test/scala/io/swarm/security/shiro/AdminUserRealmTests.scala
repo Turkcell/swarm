@@ -22,12 +22,13 @@ import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
 import io.swarm.security.{TokenInfo, TokenCategory, AuthPrincipalType}
-import io.swarm.domain.UserInfo
+import io.swarm.domain.{AdminUser, UserInfo, Client}
 import scala.collection.JavaConverters._
-import io.swarm.domain.Client
 import com.github.nscala_time.time.Imports._
+import io.swarm.domain.persistence.slick.{ResourceRepositoryComponentJDBC, ClientRepositoryComponentSlick}
+import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
 
-class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
+class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with ClientRepositoryComponentSlick with ResourceRepositoryComponentJDBC with SlickPersistenceSessionComponent {
   val realm = AdminUserRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
@@ -47,15 +48,15 @@ class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRea
   }
 
   def disable {
-    clientRepository.upsertAdminUser(TestData.user.copy(disabled = true))
+    clientRepository.updateAdminUser(TestData.user.copy(disabled = true))
   }
 
   def passivate {
-    clientRepository.upsertAdminUser(TestData.user.copy(activated = false))
+    clientRepository.updateAdminUser(TestData.user.copy(activated = false))
   }
 
   def revert(user: Client) {
-    clientRepository.upsertAdminUser(user.asInstanceOf[UserInfo])
+    clientRepository.updateAdminUser(user.asInstanceOf[AdminUser])
   }
 
   "AdminUser" should behave like basic(new UsernamePasswordToken(TestData.user.username, userPass, AuthPrincipalType.Admin), new UsernamePasswordToken(TestData.user.username, "wrong pass", AuthPrincipalType.Admin), new UsernamePasswordToken("wrong", "wrong", AuthPrincipalType.Admin), validToken, expiredToken)

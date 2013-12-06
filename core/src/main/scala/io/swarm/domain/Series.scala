@@ -19,7 +19,7 @@ package io.swarm.domain
 import java.util.UUID
 import scala.concurrent._
 import io.swarm.IOTDBException
-import io.swarm.persistence.PersistenceSessionComponent
+import io.swarm.infrastructure.persistence.PersistenceSessionComponent
 
 /**
  * Created by Anil Chalil on 10/22/13.
@@ -120,6 +120,7 @@ trait ResourceRepositoryComponent {
     def getDatabaseByName(dbName: String, orgID: UUID): Option[Database]
 
     def addAdminToOrganization(adminID: UUID, orgID: UUID)
+
     /*
         def saveSeries(orgName: String, dbName: String, series: Series): Series
 
@@ -177,6 +178,12 @@ trait ClientRepositoryComponent {
     def saveDatabaseUser(user: DatabaseUser): Unit
 
     def saveDevice(device: Device): Unit
+
+    def updateAdminUser(adminUser: AdminUser): Unit = ???
+
+    def updateDatabaseUser(databaseUser: DatabaseUser): Unit = ???
+
+    def updateDevice(device: Device): Unit = ???
   }
 
 }

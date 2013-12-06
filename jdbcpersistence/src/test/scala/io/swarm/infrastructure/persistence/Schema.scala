@@ -1,4 +1,4 @@
-package io.swarm.persistence.slick
+package io.swarm.infrastructure.persistence
 
 import io.swarm.domain._
 import org.junit.runner.RunWith
@@ -9,6 +9,7 @@ import io.swarm.{UUIDGenerator, domain}
 import io.swarm.security.HashedAlgorithm
 import io.swarm.domain.persistence.slick.ClientResourceDaoComponent
 import scala.slick.jdbc.JdbcBackend
+import io.swarm.infrastructure.persistence.slick.SlickProfileComponent
 
 /**
  * Created by capacman on 10/26/13.

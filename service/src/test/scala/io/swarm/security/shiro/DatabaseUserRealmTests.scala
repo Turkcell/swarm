@@ -30,18 +30,20 @@ import io.swarm.domain.DatabaseUser
 import io.swarm.domain.UserInfo
 import io.swarm.domain.Client
 import com.github.nscala_time.time.Imports._
+import io.swarm.domain.persistence.slick.{ResourceRepositoryComponentJDBC, ClientRepositoryComponentSlick}
+import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
 
 /**
  * Created by Anil Chalil on 11/15/13.
  */
 @RunWith(classOf[JUnitRunner])
-class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
+class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with ClientRepositoryComponentSlick with ResourceRepositoryComponentJDBC with SlickPersistenceSessionComponent {
   val realm = DatabaseUserRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
-  val user = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set())
+  val user = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(), 0)
   val userPass = "test"
   clientRepository.saveDatabaseUser(user)
   val validToken = {
@@ -56,15 +58,15 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
   }
 
   def disable {
-    clientRepository.upsertDatabaseUser(user.copy(disabled = true))
+    clientRepository.updateDatabaseUser(user.copy(disabled = true))
   }
 
   def passivate {
-    clientRepository.upsertDatabaseUser(user.copy(activated = false))
+    clientRepository.updateDatabaseUser(user.copy(activated = false))
   }
 
   def revert(user: Client) {
-    clientRepository.upsertDatabaseUser(user.asInstanceOf[UserInfo])
+    clientRepository.updateDatabaseUser(user.asInstanceOf[DatabaseUser])
   }
 
   "DatabaseUser" should behave like basic(new UsernamePasswordToken(user.username, "test", AuthPrincipalType.DatabaseUser), new UsernamePasswordToken(user.username, "wrong", AuthPrincipalType.DatabaseUser), new UsernamePasswordToken("wrıng", "wrong", AuthPrincipalType.DatabaseUser), validToken, expiredToken)

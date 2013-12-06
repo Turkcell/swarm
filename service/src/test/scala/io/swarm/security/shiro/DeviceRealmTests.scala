@@ -28,8 +28,10 @@ import io.swarm.UUIDGenerator
 import io.swarm.domain.DatabaseInfo
 import scala.collection.JavaConverters._
 import com.github.nscala_time.time.Imports._
+import io.swarm.domain.persistence.slick.{ResourceRepositoryComponentJDBC, ClientRepositoryComponentSlick}
+import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
 
-class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors {
+class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with ClientRepositoryComponentSlick with ResourceRepositoryComponentJDBC with SlickPersistenceSessionComponent {
   val realm = DeviceRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
@@ -37,8 +39,8 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
   SecurityUtils.setSecurityManager(sec)
   clientRepository.saveAdminUser(TestData.user)
   resourceRepository.saveOrganization(TestData.org)
-  val device = Device(UUIDGenerator.randomGenerator.generate(), "mydevice", DatabaseInfo(TestData.database.id, TestData.database.name), true, false, Set())
-  val deviceNoneExistent = Device(UUIDGenerator.randomGenerator.generate(), "mydevice2", DatabaseInfo(TestData.database.id, TestData.database.name), true, false, Set())
+  val device = Device(UUIDGenerator.randomGenerator.generate(), "mydevice", DatabaseInfo(TestData.database.id, TestData.database.name, 0), true, false, Set(), 0)
+  val deviceNoneExistent = Device(UUIDGenerator.randomGenerator.generate(), "mydevice2", DatabaseInfo(TestData.database.id, TestData.database.name, 0), true, false, Set(), 0)
   val userPass = "test"
   clientRepository.saveDevice(device)
   val secret = ClientSecret(AuthPrincipalType.Device)
@@ -55,15 +57,15 @@ class DeviceRealmTests extends FlatSpec with ShouldMatchers with DeviceRealmComp
   }
 
   def disable {
-    clientRepository.upsertDevice(device.copy(disabled = true))
+    clientRepository.updateDevice(device.copy(disabled = true))
   }
 
   def passivate {
-    clientRepository.upsertDevice(device.copy(activated = false))
+    clientRepository.updateDevice(device.copy(activated = false))
   }
 
   def revert(device: Client) {
-    clientRepository.upsertDevice(device.asInstanceOf[Device])
+    clientRepository.updateDevice(device.asInstanceOf[Device])
   }
 
   "Device" should behave like basic(ClientIDSecretToken(ClientID(device), secret), ClientIDSecretToken(ClientID(device), ClientSecret(AuthPrincipalType.Device)), ClientIDSecretToken(ClientID(deviceNoneExistent), ClientSecret(AuthPrincipalType.Device)), validToken, expiredToken)

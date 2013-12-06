@@ -1,4 +1,4 @@
-package io.swarm.persistence.slick
+package io.swarm.infrastructure.persistence.slick
 
 import scala.slick.driver.JdbcProfile
 

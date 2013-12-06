@@ -1,4 +1,4 @@
-name := "cassandra-persistence"
+name := "cassandrapersistence"
 
 libraryDependencies ++= Seq(
 	"com.datastax.cassandra"  % "cassandra-driver-core" % "2.0.0-rc1",

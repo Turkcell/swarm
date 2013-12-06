@@ -24,22 +24,24 @@ import org.apache.shiro.SecurityUtils
 import io.swarm.UUIDGenerator
 import io.swarm.security._
 import scala.collection.JavaConverters._
-import io.swarm.domain.Database
-import io.swarm.domain.DatabaseMetadata
 import com.github.nscala_time.time.Imports._
+import io.swarm.domain
+import io.swarm.domain.DatabaseMetadata
+import io.swarm.domain.persistence.slick.{ResourceRepositoryComponentJDBC, ClientRepositoryComponentSlick}
+import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
 
-/**
- * Created by Anil Chalil on 11/19/13.
- */
-class DatabaseRealmTests extends FlatSpec with ShouldMatchers with DatabaseRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors {
+
+class DatabaseRealmTests extends FlatSpec with ShouldMatchers with DatabaseRealmComponent with InMemoryComponents with ClientRepositoryComponentSlick with ResourceRepositoryComponentJDBC with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with SlickPersistenceSessionComponent {
   val realm = DatabaseRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
-  clientRepository.saveAdminUser(TestData.user)
-  resourceRepository.saveOrganization(TestData.org)
-  val databaseNonExist = Database(UUIDGenerator.randomGenerator.generate(), "nonExist", DatabaseMetadata(3600 * 1000 * 24))
+  db.withDynSession {
+    clientRepository.saveAdminUser(TestData.user)
+    resourceRepository.saveOrganization(TestData.org)
+  }
+  val databaseNonExist = domain.Database(UUIDGenerator.randomGenerator.generate(), "nonExist", DatabaseMetadata(3600 * 1000 * 24), 0)
   val secret = ClientSecret(AuthPrincipalType.Database)
   tokenRepository.saveClientSecret(ClientID(TestData.database), secret)
   val validToken = {

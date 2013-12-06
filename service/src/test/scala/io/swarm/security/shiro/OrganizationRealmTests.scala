@@ -25,18 +25,20 @@ import io.swarm.security._
 import io.swarm.domain.Organization
 import scala.collection.JavaConverters._
 import com.github.nscala_time.time.Imports._
+import io.swarm.domain.persistence.slick.{ResourceRepositoryComponentJDBC, ClientRepositoryComponentSlick}
+import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
 
 /**
  * Created by Anil Chalil on 11/19/13.
  */
-class OrganizationRealmTests extends FlatSpec with ShouldMatchers with OrganizationRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors {
+class OrganizationRealmTests extends FlatSpec with ShouldMatchers with OrganizationRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with ClientRepositoryComponentSlick with ResourceRepositoryComponentJDBC with SlickPersistenceSessionComponent {
   val realm = OrganizationRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
   clientRepository.saveAdminUser(TestData.user)
-  val orgNonExistent = Organization(UUIDGenerator.randomGenerator.generate(), "testorgnonexist", Set())
+  val orgNonExistent = Organization(UUIDGenerator.randomGenerator.generate(), "testorgnonexist", Set(), 0)
   resourceRepository.saveOrganization(TestData.org)
   val secret = ClientSecret(AuthPrincipalType.Organization)
   tokenRepository.saveClientSecret(ClientID(TestData.org), secret)

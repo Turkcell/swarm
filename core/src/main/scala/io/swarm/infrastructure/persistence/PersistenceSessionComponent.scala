@@ -1,4 +1,4 @@
-package io.swarm.persistence
+package io.swarm.infrastructure.persistence
 
 /**
  * Created by Anil Chalil on 12/3/13.
