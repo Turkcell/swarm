@@ -374,11 +374,13 @@ trait ClientResourceDaoComponent {
     } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, p.userPermission.?)
 
     def create(implicit session: Session) {
-      (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++ devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl).create
+      (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++
+        devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ databaseUsers.ddl ++ databaseUserPermissions.ddl).create
     }
 
     def drop(implicit session: Session) {
-      (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++ devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl).drop
+      (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++
+        devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ databaseUsers.ddl ++ databaseUserPermissions.ddl).drop
     }
 
     def saveDatabase(database: domain.Database, orgID: UUID)(implicit session: Session) = {

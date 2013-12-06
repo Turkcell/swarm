@@ -33,7 +33,8 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   val adminWithoutOrg = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "adminWithoutOrg", "adminWithoutOrg@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(), 0)
   val devices = List(Device(UUIDGenerator.randomGenerator.generate(), "device1", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2"), 0), Device(UUIDGenerator.randomGenerator.generate(), "device2", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2"), 0))
   val deviceWithoutPerm = Device(UUIDGenerator.randomGenerator.generate(), "device3", databases.head.databaseInfo, activated = true, disabled = false, Set(), 0)
-
+  val user = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("user"), Some("user"), "user", "user@user.com", HashedAlgorithm.toHex("test"), true, true, false, Set("perm1","perm2"), 0)
+  val userWithoutPerm = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("user"), Some("user"), "user2", "user2@user.com", HashedAlgorithm.toHex("test"), true, true, false, Set(), 0)
 
   val series = List(
     domain.Series(UUIDGenerator.randomGenerator.generate(), "key1", Some("first series"), Set("tag1"), Map("attr1" -> "val1"), SeriesType.Long),
@@ -52,6 +53,8 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
         clientResourceDao.saveAdminUser(admin)
         clientResourceDao.addAdminToOrganization(admin.id, organization.id)
         clientResourceDao.saveAdminUser(adminWithoutOrg)
+        clientResourceDao.saveUser(user)
+        clientResourceDao.saveUser(userWithoutPerm)
     }
   }
 
@@ -244,6 +247,57 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
       db withSession {
         implicit session: Session =>
           clientResourceDao.saveAdminUser(admin)
+      }
+    }
+  }
+
+  it should "get user by id" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getUserByID(user.id) should be(Some(user))
+    }
+  }
+
+  it should "get userWithoutPerm by id" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getUserByID(userWithoutPerm.id) should be(Some(userWithoutPerm))
+    }
+  }
+
+  it should "get user by email" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getUserByEmail(user.email) should be(Some(user))
+    }
+  }
+
+  it should "get userWithoutPerm by email" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getUserByEmail(userWithoutPerm.email) should be(Some(userWithoutPerm))
+    }
+  }
+
+  it should "get user by username" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getUserByUsername(user.username) should be(Some(user))
+    }
+  }
+
+  it should "get userWithoutPerm by username" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getUserByUsername(userWithoutPerm.username) should be(Some(userWithoutPerm))
+    }
+  }
+
+  it should "throw DuplicateIDEntity for duplicate users" in {
+    intercept[DuplicateIDEntity] {
+      db withSession {
+        implicit session: Session =>
+          clientResourceDao.saveUser(user)
       }
     }
   }
