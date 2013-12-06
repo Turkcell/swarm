@@ -8,7 +8,6 @@ import scala.slick.driver.{JdbcProfile, HsqldbDriver}
 import io.swarm.{UUIDGenerator, domain}
 import io.swarm.security.HashedAlgorithm
 import io.swarm.domain.persistence.slick.ClientResourceDaoComponent
-import scala.slick.backend.DatabaseComponent
 import scala.slick.jdbc.JdbcBackend
 
 /**
@@ -29,8 +28,11 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
 
   val databases = List(domain.Database(UUIDGenerator.randomGenerator.generate(), "db1", DatabaseMetadata(0), 0), domain.Database(UUIDGenerator.randomGenerator.generate(), "db2", DatabaseMetadata(0), 0))
   val organization = Organization(UUIDGenerator.randomGenerator.generate(), "testorg", databases.toSet, 0)
-  val tmpUser = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(organization), 0)
+  val organizationWithoutDB = Organization(UUIDGenerator.randomGenerator.generate(), "withoutdb", Set(), 0)
+  val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(organization), 0)
+  val adminWithoutOrg = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "adminWithoutOrg", "adminWithoutOrg@test.com", HashedAlgorithm.toHex("test"), true, true, false, Set(), 0)
   val devices = List(Device(UUIDGenerator.randomGenerator.generate(), "device1", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2"), 0), Device(UUIDGenerator.randomGenerator.generate(), "device2", databases.head.databaseInfo, activated = true, disabled = false, Set("perm1", "perm2"), 0))
+  val deviceWithoutPerm = Device(UUIDGenerator.randomGenerator.generate(), "device3", databases.head.databaseInfo, activated = true, disabled = false, Set(), 0)
 
 
   val series = List(
@@ -42,11 +44,14 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
       implicit session: Session =>
         clientResourceDao.create
         clientResourceDao.saveOrganization(organization)
+        clientResourceDao.saveOrganization(organizationWithoutDB)
         databases.foreach(clientResourceDao.saveDatabase(_, organization.id))
         series.foreach(clientResourceDao.saveSeries(_, databases.head.id))
         devices.foreach(clientResourceDao.saveDevice)
-        clientResourceDao.saveAdminUser(tmpUser)
-        clientResourceDao.addAdminToOrganization(tmpUser.id,organization.id)
+        clientResourceDao.saveDevice(deviceWithoutPerm)
+        clientResourceDao.saveAdminUser(admin)
+        clientResourceDao.addAdminToOrganization(admin.id, organization.id)
+        clientResourceDao.saveAdminUser(adminWithoutOrg)
     }
   }
 
@@ -139,6 +144,13 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
+  it should "get organization without db by id" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getOrganizationByID(organizationWithoutDB.id) should be(Some(organizationWithoutDB))
+    }
+  }
+
   it should "throw DuplicateIDEntity for duplicate organizations" in {
     intercept[DuplicateIDEntity] {
       db withSession {
@@ -155,10 +167,24 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
+  it should "get device withoutperm by id " in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getDeviceByID(deviceWithoutPerm.id) should be(Some(deviceWithoutPerm))
+    }
+  }
+
   it should "get device by deviceId " in {
     db withSession {
       implicit session: Session =>
         clientResourceDao.getDeviceByDeviceID(devices.head.deviceID) should be(Some(devices.head))
+    }
+  }
+
+  it should "get device withoutperm by deviceId " in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getDeviceByDeviceID(deviceWithoutPerm.deviceID) should be(Some(deviceWithoutPerm))
     }
   }
 
@@ -174,21 +200,42 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   it should "get admin by id" in {
     db withSession {
       implicit session: Session =>
-        clientResourceDao.getAdminByID(tmpUser.id) should be(Some(tmpUser))
+        clientResourceDao.getAdminByID(admin.id) should be(Some(admin))
+    }
+  }
+
+  it should "get adminwithoutorg by id" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getAdminByID(adminWithoutOrg.id) should be(Some(adminWithoutOrg))
     }
   }
 
   it should "get admin by email" in {
     db withSession {
       implicit session: Session =>
-        clientResourceDao.getAdminByEmail(tmpUser.email) should be(Some(tmpUser))
+        clientResourceDao.getAdminByEmail(admin.email) should be(Some(admin))
+    }
+  }
+
+  it should "get adminwithoutorg by email" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getAdminByEmail(adminWithoutOrg.email) should be(Some(adminWithoutOrg))
     }
   }
 
   it should "get admin by username" in {
     db withSession {
       implicit session: Session =>
-        clientResourceDao.getAdminByUsername(tmpUser.username) should be(Some(tmpUser))
+        clientResourceDao.getAdminByUsername(admin.username) should be(Some(admin))
+    }
+  }
+
+  it should "get adminwithoutorg by username" in {
+    db withSession {
+      implicit session: Session =>
+        clientResourceDao.getAdminByUsername(adminWithoutOrg.username) should be(Some(adminWithoutOrg))
     }
   }
 
@@ -196,7 +243,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     intercept[DuplicateIDEntity] {
       db withSession {
         implicit session: Session =>
-          clientResourceDao.saveAdminUser(tmpUser)
+          clientResourceDao.saveAdminUser(admin)
       }
     }
   }

@@ -33,7 +33,7 @@ trait ClientResourceDaoComponent {
       // Every table needs a * projection with the same type as the table's type parameter
       def * = (id, name, deleted, version)
 
-      def index_name = index("idx_orgname", (name), unique = false)
+      def index_name = index("idx_orgname", name, unique = false)
     }
 
     val organizations = TableQuery[Organizations]
@@ -56,7 +56,7 @@ trait ClientResourceDaoComponent {
       // Every table needs a * projection with the same type as the table's type parameter
       def * = (id, name, organization, oauthTTL, deleted, version)
 
-      def index_name = index("idx_dbname", (name), unique = false)
+      def index_name = index("idx_dbname", name, unique = false)
 
       def fk_org = foreignKey("database_org_fk", organization, organizations)(_.id)
     }
@@ -81,7 +81,7 @@ trait ClientResourceDaoComponent {
       // Every table needs a * projection with the same type as the table's type parameter
       def * = (id, dbID, key, name, seriesType, deleted)
 
-      def index_key = index("idx_serieskey", (key), unique = false)
+      def index_key = index("idx_serieskey", key, unique = false)
 
       def fk_db = foreignKey("series_db_fk", dbID, databases)(_.id)
     }
@@ -97,7 +97,7 @@ trait ClientResourceDaoComponent {
 
       def fk_series = foreignKey("series_tag_fk", seriesID, series)(_.id)
 
-      def index_name = index("idx_tagsname", (name), unique = false)
+      def index_name = index("idx_tagsname", name, unique = false)
     }
 
     val tags = TableQuery[Tags]
@@ -113,7 +113,7 @@ trait ClientResourceDaoComponent {
 
       def fk_series = foreignKey("series_attributes_fk", seriesID, series)(_.id)
 
-      def index_name = index("idx_attributesname", (name), unique = false)
+      def index_name = index("idx_attributesname", name, unique = false)
     }
 
     val attributes = TableQuery[Attributes]
@@ -137,7 +137,7 @@ trait ClientResourceDaoComponent {
 
       def fk_database = foreignKey("devices_db_fk", dbID, databases)(_.id)
 
-      def index_deviceID = index("idx_devicesdeviceID", (deviceID), unique = false)
+      def index_deviceID = index("idx_devicesdeviceID", deviceID, unique = false)
     }
 
     val devices = TableQuery[Devices]
@@ -179,27 +179,71 @@ trait ClientResourceDaoComponent {
 
       def * = (id, name, surname, username, email, credential, activated, confirmed, disabled, deleted, version)
 
-      def index_email = index("idx_adminusersemail", (email), unique = true)
+      def index_email = index("idx_adminusersemail", email, unique = true)
 
-      def index_username = index("idx_adminusersusername", (username), unique = true)
-
-      /*val adminByID = for {
-        id <- Parameters[String]
-        (((a, _), o), d) <- AdminUsers.where(a=> (a.id is id) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
-      } yield (a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
-
-      /*val adminByEmail = for {
-        email <- Parameters[String]
-        (((a, _), o), d) <- AdminUsers.where(a => (a.email is email) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
-      } yield (a.name, a.surname, a.username, a.id, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
-
-      /*val adminByUsername = for {
-        username <- Parameters[String]
-        (((a, _), o), d) <- AdminUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin OrganizationAdmins on (_.id === _.adminID) leftJoin Organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin Databases.where(_.deleted is false) on (_._2.id === _.organization)
-      } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, o.id.?, o.name.?, d.id.?, d.name.?, d.oauthTTL.?)*/
+      def index_username = index("idx_adminusersusername", username, unique = true)
     }
 
     val adminUsers = TableQuery[AdminUsers]
+
+    class OrganizationAdmins(tag: Tag) extends Table[(String, String)](tag, "ORGANIZATION_ADMINS") {
+      def orgID = column[String]("ORGID")
+
+      def adminID = column[String]("ADMINID")
+
+      def * = (orgID, adminID)
+
+      def fk_organization = foreignKey("organization_admins_organization_fk", orgID, organizations)(_.id)
+
+      def fk_admin = foreignKey("organization_admins_admin_fk", adminID, adminUsers)(_.id)
+    }
+
+    val organizationAdmins = TableQuery[OrganizationAdmins]
+
+    class DatabaseUsers(tag: Tag) extends Table[(String, Option[String], Option[String], String, String, String, Boolean, Boolean, Boolean, Boolean, Int)](tag, "DATABASE_USERS") {
+      def id = column[String]("ID", O.PrimaryKey)
+
+      def name = column[Option[String]]("NAME")
+
+      def surname = column[Option[String]]("SURNAME")
+
+      def username = column[String]("USERNAME")
+
+      def email = column[String]("EMAIL")
+
+      def credential = column[String]("CREDENTIAL")
+
+      def activated = column[Boolean]("ACTIVATED")
+
+      def confirmed = column[Boolean]("CONFIRMED")
+
+      def disabled = column[Boolean]("DISABLED")
+
+      def deleted = column[Boolean]("DELETED", O.Default(false))
+
+      def version = column[Int]("VERSION", O.Default(0))
+
+      def * = (id, name, surname, username, email, credential, activated, confirmed, disabled, deleted, version)
+
+      def index_email = index("idx_databaseusersemail", email, unique = true)
+
+      def index_username = index("idx_databaseusersusername", username, unique = true)
+    }
+
+    val databaseUsers = TableQuery[DatabaseUsers]
+
+    class DatabaseUserPermissions(tag: Tag) extends Table[(String, String)](tag, "DATABASER_USER_PERMISSIONS") {
+      def id = column[String]("USER_ID")
+
+      def userPermission = column[String]("USER_PERMISSION")
+
+      def * = (id, userPermission)
+
+      def fk_device = foreignKey("databaseuser_permissions_user_fk", id, databaseUsers)(_.id)
+    }
+
+    val databaseUserPermissions = TableQuery[DatabaseUserPermissions]
+
 
     def databaseByID(d: Databases, id: String) = (d.id is id) && (d.deleted is false)
 
@@ -220,6 +264,10 @@ trait ClientResourceDaoComponent {
     def adminByID(a: AdminUsers, id: String) = (a.id is id) && (a.deleted is false)
 
     def adminByID(a: AdminUsers, id: Column[String]) = (a.id is id) && (a.deleted is false)
+
+    def userByID(a: DatabaseUsers, id: String) = (a.id is id) && (a.deleted is false)
+
+    def userByID(a: DatabaseUsers, id: Column[String]) = (a.id is id) && (a.deleted is false)
 
     val organizationByIDQuery = for {
       id <- Parameters[String]
@@ -282,37 +330,48 @@ trait ClientResourceDaoComponent {
 
     val deviceByIDQuery = for {
       id <- Parameters[String]
-      db <- databases
-      p <- devicePermissions
-      d <- devices if (d.id is id) && (d.deleted is false) && (db.id is d.dbID) && (p.id is d.id)
-    } yield (d.deviceID, d.activated, d.disabled, p.devicePermission, d.version, db.id, db.name, d.version)
+      ((d, db), p) <- devices.where(d => (d.id is id) && (d.deleted is false)) innerJoin databases.where(_.deleted is false) on (_.dbID === _.id) leftJoin devicePermissions on (_._1.id === _.id)
+    } yield (d.deviceID, d.activated, d.disabled, p.devicePermission.?, d.version, db.id, db.name, d.version)
 
     val deviceByDeviceIDQuery = for {
       deviceID <- Parameters[String]
-      db <- databases
-      p <- devicePermissions
-      d <- devices if (d.deviceID is deviceID) && (d.deleted is false) && (db.id is d.dbID) && (p.id is d.id)
-    } yield (d.id, d.activated, d.disabled, p.devicePermission, d.version, db.id, db.name, d.version)
+      ((d, db), p) <- devices.where(d => (d.deviceID is deviceID) && (d.deleted is false)) innerJoin databases.where(_.deleted is false) on (_.dbID === _.id) leftJoin devicePermissions on (_._1.id === _.id)
+    } yield (d.id, d.activated, d.disabled, p.devicePermission.?, d.version, db.id, db.name, d.version)
 
     val checkAdminQuery = for {
       adminID <- Parameters[String]
       a <- adminUsers if adminByID(a, adminID)
     } yield 1
 
+    val adminByIDQuery = for {
+      id <- Parameters[String]
+      (((a, _), o), d) <- adminUsers.where(a => adminByID(a, id)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)
 
-    class OrganizationAdmins(tag: Tag) extends Table[(String, String)](tag, "ORGANIZATION_ADMINS") {
-      def orgID = column[String]("ORGID")
+    val adminByEmailQuery = for {
+      email <- Parameters[String]
+      (((a, _), o), d) <- adminUsers.where(a => (a.email is email) && (a.deleted is false)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.username, a.id, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)
 
-      def adminID = column[String]("ADMINID")
+    val adminByUsernameQuery = for {
+      username <- Parameters[String]
+      (((a, _), o), d) <- adminUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
+    } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)
 
-      def * = (orgID, adminID)
+    val userByIDQuery = for {
+      id <- Parameters[String]
+      (a, p) <- databaseUsers.where(a => userByID(a, id)) leftJoin databaseUserPermissions on (_.id === _.id)
+    } yield (a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, p.userPermission.?)
 
-      def fk_organization = foreignKey("organization_admins_organization_fk", orgID, organizations)(_.id)
+    val userByEmailQuery = for {
+      email <- Parameters[String]
+      (a, p) <- databaseUsers.where(a => (a.email is email) && (a.deleted is false)) leftJoin databaseUserPermissions on (_.id === _.id)
+    } yield (a.name, a.surname, a.username, a.id, a.credential, a.activated, a.confirmed, a.disabled, a.version, p.userPermission.?)
 
-      def fk_admin = foreignKey("organization_admins_admin_fk", adminID, adminUsers)(_.id)
-    }
-
-    val organizationAdmins = TableQuery[OrganizationAdmins]
+    val userByUsernameQuery = for {
+      username <- Parameters[String]
+      (a, p) <- databaseUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin databaseUserPermissions on (_.id === _.id)
+    } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, p.userPermission.?)
 
     def create(implicit session: Session) {
       (organizations.ddl ++ databases.ddl ++ series.ddl ++ tags.ddl ++ attributes.ddl ++ devices.ddl ++ devicePermissions.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl).create
@@ -442,7 +501,7 @@ trait ClientResourceDaoComponent {
         throw domain.DuplicateIDEntity(s"series with key ${seriesValue.key} is alread defined!")
       else {
         val seriesID: String = seriesValue.id.toString
-        series.map(s => (s.id, s.dbID, s.key, s.name, s.seriesType)) +=(seriesID, dbID.toString, seriesValue key, seriesValue.name, seriesValue.`type`.toString)
+        series.map(s => (s.id, s.dbID, s.key, s.name, s.seriesType)) +=(seriesID, dbID.toString, seriesValue.key, seriesValue.name, seriesValue.`type`.toString)
         insertTags(seriesID, seriesValue.tags)
         insertAttributes(seriesID, seriesValue.attributes)
       }
@@ -534,7 +593,7 @@ trait ClientResourceDaoComponent {
       val devices = deviceByIDQuery(id.toString).list
       checkEmpty(devices) {
         val head = devices.head
-        domain.Device(id, head._1, domain.DatabaseInfo(UUID.fromString(head._6), head._7, head._8), head._2, head._3, devices.map(_._4).toSet, head._5)
+        domain.Device(id, head._1, domain.DatabaseInfo(UUID.fromString(head._6), head._7, head._8), head._2, head._3, devices.map(_._4).flatten.toSet, head._5)
       }
     }
 
@@ -542,7 +601,7 @@ trait ClientResourceDaoComponent {
       val devices = deviceByDeviceIDQuery(deviceID).list
       checkEmpty(devices) {
         val head = devices.head
-        domain.Device(UUID.fromString(head._1), deviceID, domain.DatabaseInfo(UUID.fromString(head._6), head._7, head._8), head._2, head._3, devices.map(_._4).toSet, head._5)
+        domain.Device(UUID.fromString(head._1), deviceID, domain.DatabaseInfo(UUID.fromString(head._6), head._7, head._8), head._2, head._3, devices.map(_._4).flatten.toSet, head._5)
       }
     }
 
@@ -564,7 +623,7 @@ trait ClientResourceDaoComponent {
               d =>
                 (d._13, d._14, d._15, d._16) match {
                   case (None, None, None, None) => None
-                  case (Some(dbid), Some(dbname), Some(oauthttl), Some(version)) => Some(domain.Database(UUID.fromString(dbid), dbname, domain.DatabaseMetadata(oauthttl), version))
+                  case (Some(dbid), Some(dbname), Some(oauthttl), Some(dversion)) => Some(domain.Database(UUID.fromString(dbid), dbname, domain.DatabaseMetadata(oauthttl), dversion))
                   case _ => throw new IllegalArgumentException(s"illegal row ${r._2}")
                 }
             }.flatten.toSet, version))
@@ -575,9 +634,7 @@ trait ClientResourceDaoComponent {
     def isAdminExist(id: UUID)(implicit session: Session) = checkAdminQuery(id.toString).firstOption.isDefined
 
     def getAdminByID(id: UUID)(implicit session: Session) = {
-      val admins = (for {
-        (((a, _), o), d) <- adminUsers.where(a => (a.id is id.toString) && (a.deleted is false)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
-      } yield (a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)).list
+      val admins = adminByIDQuery(id.toString).list
       checkEmpty(admins) {
         val head = admins.head
         domain.AdminUser(id, head._1, head._2, head._3, head._4, head._5, head._6, head._7, head._8,
@@ -587,9 +644,7 @@ trait ClientResourceDaoComponent {
 
 
     def getAdminByEmail(email: String)(implicit session: Session) = {
-      val admins = (for {
-        (((a, _), o), d) <- adminUsers.where(a => (a.email is email) && (a.deleted is false)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
-      } yield (a.name, a.surname, a.username, a.id, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)).list
+      val admins = adminByEmailQuery(email).list
       checkEmpty(admins) {
         val head = admins.head
         domain.AdminUser(UUID.fromString(head._4), head._1, head._2, head._3, email, head._5, head._6, head._7, head._8,
@@ -598,9 +653,7 @@ trait ClientResourceDaoComponent {
     }
 
     def getAdminByUsername(username: String)(implicit session: Session) = {
-      val admins = (for {
-        (((a, _), o), d) <- adminUsers.where(a => (a.username is username) && (a.deleted is false)) leftJoin organizationAdmins on (_.id === _.adminID) leftJoin organizations.where(_.deleted is false) on (_._2.orgID === _.id) leftJoin databases.where(_.deleted is false) on (_._2.id === _.organization)
-      } yield (a.name, a.surname, a.id, a.email, a.credential, a.activated, a.confirmed, a.disabled, a.version, o.id.?, o.name.?, o.version.?, d.id.?, d.name.?, d.oauthTTL.?, d.version.?)).list
+      val admins = adminByUsernameQuery(username).list
       checkEmpty(admins) {
         val head = admins.head
         domain.AdminUser(UUID.fromString(head._3), head._1, head._2, username, head._4, head._5, head._6, head._7,
@@ -622,6 +675,41 @@ trait ClientResourceDaoComponent {
 
     def addAdminToOrganization(adminID: UUID, orgID: UUID)(implicit session: Session) {
       organizationAdmins +=(orgID.toString, adminID.toString)
+    }
+
+    def getUserByID(id: UUID)(implicit session: Session) = {
+      val users = userByIDQuery(id.toString).list
+      checkEmpty(users) {
+        val head = users.head
+        domain.DatabaseUser(id, head._1, head._2, head._3, head._4, head._5, head._6, head._7, head._8, users.map(_._10).flatten.toSet, head._9)
+      }
+    }
+
+    def getUserByEmail(email: String)(implicit session: Session) = {
+      val users = userByEmailQuery(email).list
+      checkEmpty(users) {
+        val head = users.head
+        domain.DatabaseUser(UUID.fromString(head._4), head._1, head._2, head._3, email, head._5, head._6, head._7, head._8, users.map(_._10).flatten.toSet, head._9)
+      }
+    }
+
+    def getUserByUsername(username: String)(implicit session: Session) = {
+      val users = userByUsernameQuery(username).list
+      checkEmpty(users) {
+        val head = users.head
+        domain.DatabaseUser(UUID.fromString(head._3), head._1, head._2, username, head._4, head._5, head._6, head._7, head._8, users.map(_._10).flatten.toSet, head._9)
+      }
+    }
+
+    def saveUser(user: domain.DatabaseUser)(implicit session: Session) {
+      val userOption = getUserByEmail(user.email).map(v => v.email).orElse(getUserByUsername(user.username).map(v => v.username))
+      if (userOption.isDefined)
+        throw domain.DuplicateIDEntity(s"user with ${userOption.get} is already defined!")
+      else {
+        databaseUsers.map(a => (a.id, a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled)) +=(user.id.toString,
+          user.name, user.surname, user.username, user.email, user.credential, user.activated, user.confirmed, user.disabled)
+        databaseUserPermissions ++= user.permissions.map(p => (user.id.toString, p)).toSeq
+      }
     }
   }
 

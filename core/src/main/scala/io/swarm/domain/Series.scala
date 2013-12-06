@@ -172,17 +172,11 @@ trait ClientRepositoryComponent {
 
     def getDeviceAsync(uuid: UUID)(implicit execctx: ExecutionContext): Future[Option[Device]] = future(persistenceSession.withSession(getDevice(uuid)))
 
-    def saveAdminUser(user: UserInfo): Unit
+    def saveAdminUser(user: AdminUser): Unit
 
-    def saveDatabaseUser(user: UserInfo): Unit
+    def saveDatabaseUser(user: DatabaseUser): Unit
 
     def saveDevice(device: Device): Unit
-
-    def upsertAdminUser(user: UserInfo): Option[UserInfo]
-
-    def upsertDatabaseUser(user: UserInfo): Option[UserInfo]
-
-    def upsertDevice(device: Device): Option[Device]
   }
 
 }
