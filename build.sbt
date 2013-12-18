@@ -6,6 +6,8 @@ scalaVersion in ThisBuild := "2.10.3"
 
 lazy val core = project
 
+lazy val tsdb = project.dependsOn(core)
+
 lazy val cassandrapersistence = project.dependsOn(core)
 
 lazy val jdbcpersistence = project.dependsOn(core)

@@ -3,8 +3,9 @@ package io.swarm.domain.persistence.slick
 import io.swarm.domain
 import java.util.UUID
 import scala.slick.jdbc.{StaticQuery => Q}
-import io.swarm.domain.{OrganizationInfo, Organization, SeriesType}
+import io.swarm.domain.{IDEntityNotFound, OrganizationInfo, Organization, SeriesType}
 import io.swarm.infrastructure.persistence.slick.SlickProfileComponent
+import io.swarm.infrastructure.persistence.OptimisticLockingException
 
 
 trait ClientResourceDaoComponent {
@@ -123,7 +124,7 @@ trait ClientResourceDaoComponent {
 
       def deviceID = column[String]("DEVICE_OWN_ID")
 
-      def dbID = column[String]("DB_ID")
+      def parent = column[String]("DB_ID")
 
       def activated = column[Boolean]("ACTIVATED")
 
@@ -133,9 +134,9 @@ trait ClientResourceDaoComponent {
 
       def version = column[Int]("VERSION", O.Default(0))
 
-      def * = (id, deviceID, dbID, activated, disabled, deleted, version)
+      def * = (id, deviceID, parent, activated, disabled, deleted, version)
 
-      def fk_database = foreignKey("devices_db_fk", dbID, databases)(_.id)
+      def fk_database = foreignKey("devices_db_fk", parent, organizations)(_.id)
 
       def index_deviceID = index("idx_devicesdeviceID", deviceID, unique = false)
     }
@@ -330,13 +331,23 @@ trait ClientResourceDaoComponent {
 
     val deviceByIDQuery = for {
       id <- Parameters[String]
-      ((d, db), p) <- devices.where(d => (d.id is id) && (d.deleted is false)) innerJoin databases.where(_.deleted is false) on (_.dbID === _.id) leftJoin devicePermissions on (_._1.id === _.id)
-    } yield (d.deviceID, d.activated, d.disabled, p.devicePermission.?, d.version, db.id, db.name, d.version)
+      ((d, db), p) <- devices.where(d => (d.id is id) && (d.deleted is false)) innerJoin databases.where(_.deleted is false) on (_.parent === _.id) leftJoin devicePermissions on (_._1.id === _.id)
+    } yield (d.deviceID, d.activated, d.disabled, p.devicePermission.?, d.version, db.id, db.name, db.version)
 
     val deviceByDeviceIDQuery = for {
       deviceID <- Parameters[String]
-      ((d, db), p) <- devices.where(d => (d.deviceID is deviceID) && (d.deleted is false)) innerJoin databases.where(_.deleted is false) on (_.dbID === _.id) leftJoin devicePermissions on (_._1.id === _.id)
-    } yield (d.id, d.activated, d.disabled, p.devicePermission.?, d.version, db.id, db.name, d.version)
+      ((d, db), p) <- devices.where(d => (d.deviceID is deviceID) && (d.deleted is false)) innerJoin databases.where(_.deleted is false) on (_.parent === _.id) leftJoin devicePermissions on (_._1.id === _.id)
+    } yield (d.id, d.activated, d.disabled, p.devicePermission.?, d.version, db.id, db.name, db.version)
+
+    val updateDeviceByIDQuery = for {
+      (id, version) <- Parameters[(String, Int)]
+      (d, db) <- devices.where(d => (d.id is id) && (d.deleted is false) && (d.version is version)) innerJoin databases.where(_.deleted is false) on (_.parent === _.id)
+    } yield (d.deviceID, d.activated, d.disabled, d.version)
+
+    val deleteDevicePermissionsQuery = for {
+      id <- Parameters[String]
+      p <- devicePermissions if p.id is id
+    } yield p
 
     val checkAdminQuery = for {
       adminID <- Parameters[String]
@@ -608,11 +619,22 @@ trait ClientResourceDaoComponent {
     }
 
     def saveDevice(device: domain.Device) = {
-      if (deviceByDeviceIDQuery(device.deviceID).firstOption.isDefined)
-        throw domain.DuplicateIDEntity(s"device with ${device.deviceID} is already defined!")
-      else {
-        devices.map(d => (d.id, d.deviceID, d.activated, d.disabled, d.dbID)) +=(device.id.toString, device.deviceID, device.activated, device.disabled, device.databaseRef.id.toString)
+      devices.map(d => (d.id, d.deviceID, d.activated, d.disabled, d.parent)) +=(device.id.toString, device.deviceID, device.activated, device.disabled, device.databaseRef.id.toString)
+      devicePermissions ++= device.permissions.map(p => (device.id.toString, p)).toSeq
+    }
+
+    def updateDevice(device: domain.Device) = {
+      if (deviceByIDQuery(device.id.toString).firstOption.isEmpty)
+        throw IDEntityNotFound(s"device with id ${device.id} not found!")
+      val count = (for {
+        d <- devices if (d.id is device.id.toString) && (d.deleted is false) && (d.version is device.version)
+      } yield (d.deviceID, d.activated, d.disabled, d.version)) update ((device.deviceID, device.activated, device.disabled, device.version + 1))
+      if (count > 0) {
+        deleteDevicePermissionsQuery(device.id.toString).delete
         devicePermissions ++= device.permissions.map(p => (device.id.toString, p)).toSeq
+        device.copy(version = device.version + 1)
+      } else {
+        throw OptimisticLockingException(s"device with id ${device.id} is already changed!")
       }
     }
 
@@ -664,14 +686,11 @@ trait ClientResourceDaoComponent {
     }
 
     def saveAdminUser(admin: domain.AdminUser) {
-      val adminOption = getAdminByEmail(admin.email).map(v => v.email).orElse(getAdminByUsername(admin.username).map(v => v.username))
-      if (adminOption.isDefined)
-        throw domain.DuplicateIDEntity(s"admin user with ${adminOption.get} is already defined!")
-      else {
-        adminUsers.map(a => (a.id, a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled)) +=(admin.id.toString,
-          admin.name, admin.surname, admin.username, admin.email, admin.credential, admin.activated, admin.confirmed, admin.disabled)
-      }
+      adminUsers.map(a => (a.id, a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled)) +=(admin.id.toString,
+        admin.name, admin.surname, admin.username, admin.email, admin.credential, admin.activated, admin.confirmed, admin.disabled)
     }
+
+    def updateAdminUser(admin: domain.AdminUser) = ???
 
     def getOrganizationInfoByID(uuid: UUID): Option[OrganizationInfo] = organizationInfoByIDQuery(uuid.toString).firstOption.map(r => OrganizationInfo(uuid, r._1, r._2))
 
@@ -703,15 +722,15 @@ trait ClientResourceDaoComponent {
       }
     }
 
+    //TODO remove schema validation
     def saveUser(user: domain.DatabaseUser) {
-      val userOption = getUserByEmail(user.email).map(v => v.email).orElse(getUserByUsername(user.username).map(v => v.username))
-      if (userOption.isDefined)
-        throw domain.DuplicateIDEntity(s"user with ${userOption.get} is already defined!")
-      else {
-        databaseUsers.map(a => (a.id, a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled)) +=(user.id.toString,
-          user.name, user.surname, user.username, user.email, user.credential, user.activated, user.confirmed, user.disabled)
-        databaseUserPermissions ++= user.permissions.map(p => (user.id.toString, p)).toSeq
-      }
+      databaseUsers.map(a => (a.id, a.name, a.surname, a.username, a.email, a.credential, a.activated, a.confirmed, a.disabled)) +=(user.id.toString,
+        user.name, user.surname, user.username, user.email, user.credential, user.activated, user.confirmed, user.disabled)
+      databaseUserPermissions ++= user.permissions.map(p => (user.id.toString, p)).toSeq
+    }
+
+    def updateUser(user: domain.DatabaseUser) = {
+
     }
   }
 

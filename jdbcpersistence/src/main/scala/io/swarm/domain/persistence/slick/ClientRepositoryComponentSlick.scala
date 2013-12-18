@@ -32,6 +32,12 @@ trait ClientRepositoryComponentSlick extends ClientRepositoryComponent {
     def getDatabaseUser(uuid: UUID): Option[UserInfo] = clientResourceDao.getUserByID(uuid)
 
     def getDevice(uuid: UUID): Option[Device] = clientResourceDao.getDeviceByID(uuid)
+
+    def updateAdminUser(adminUser: AdminUser): Unit = clientResourceDao.updateAdminUser(adminUser)
+
+    def updateDatabaseUser(databaseUser: DatabaseUser): Unit = clientResourceDao.updateUser(databaseUser)
+
+    def updateDevice(device: Device): Unit = clientResourceDao.updateDevice(device)
   }
 
 }

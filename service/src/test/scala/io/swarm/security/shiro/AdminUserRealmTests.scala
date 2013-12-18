@@ -35,7 +35,15 @@ class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRea
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
   val userPass = "test"
-  clientRepository.saveAdminUser(TestData.user)
+  db.withDynSession {
+    clientResourceDao.create
+    clientRepository.saveAdminUser(TestData.user)
+    TestData.user.organizations.foreach {
+      o =>
+        resourceRepository.saveOrganization(o)
+        resourceRepository.addAdminToOrganization(TestData.user.id, o.id)
+    }
+  }
   val validToken = {
     val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, TestData.user.id), 0.toDuration, 0)
     tokenRepository.putTokenInfo(tokenInfo)
@@ -48,15 +56,15 @@ class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRea
   }
 
   def disable {
-    clientRepository.updateAdminUser(TestData.user.copy(disabled = true))
+    db.withDynSession(clientRepository.updateAdminUser(TestData.user.copy(disabled = true)))
   }
 
   def passivate {
-    clientRepository.updateAdminUser(TestData.user.copy(activated = false))
+    db.withDynSession(clientRepository.updateAdminUser(TestData.user.copy(activated = false)))
   }
 
   def revert(user: Client) {
-    clientRepository.updateAdminUser(user.asInstanceOf[AdminUser])
+    db.withDynSession(clientRepository.updateAdminUser(user.asInstanceOf[AdminUser]))
   }
 
   "AdminUser" should behave like basic(new UsernamePasswordToken(TestData.user.username, userPass, AuthPrincipalType.Admin), new UsernamePasswordToken(TestData.user.username, "wrong pass", AuthPrincipalType.Admin), new UsernamePasswordToken("wrong", "wrong", AuthPrincipalType.Admin), validToken, expiredToken)

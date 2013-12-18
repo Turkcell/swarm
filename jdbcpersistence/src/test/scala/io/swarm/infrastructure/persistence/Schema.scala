@@ -24,7 +24,7 @@ trait HSQLInMemoryClientResourceDaoComponent extends SlickProfileComponent with 
 }
 
 @RunWith(classOf[JUnitRunner])
-class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with ClientResourceDaoComponent with HSQLInMemoryClientResourceDaoComponent {
+class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap  with HSQLInMemoryClientResourceDaoComponent {
 
 
   val databases = List(domain.Database(UUIDGenerator.randomGenerator.generate(), "db1", DatabaseMetadata(0), 0), domain.Database(UUIDGenerator.randomGenerator.generate(), "db2", DatabaseMetadata(0), 0))
@@ -197,6 +197,13 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
 
         clientResourceDao.saveDevice(devices.head)
       }
+    }
+  }
+
+  it should "update device by id " in {
+    db withDynSession {
+      val dev = devices.head.copy(activated = false, permissions = Set("newPerm"), disabled = true, deviceID = "new deviceID")
+      Some(clientResourceDao.updateDevice(dev)) should be(clientResourceDao.getDeviceByID(dev.id))
     }
   }
 

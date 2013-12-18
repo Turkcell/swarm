@@ -76,7 +76,10 @@ trait ResourceRef extends IDEntity with Versioned {
 
 trait OrganizationRef extends ResourceRef
 
+trait DomainRef extends ResourceRef
+
 trait DatabaseRef extends ResourceRef
+
 
 case class DatabaseMetadata(val oauthTTL: Long)
 
@@ -179,11 +182,11 @@ trait ClientRepositoryComponent {
 
     def saveDevice(device: Device): Unit
 
-    def updateAdminUser(adminUser: AdminUser): Unit = ???
+    def updateAdminUser(adminUser: AdminUser): Unit
 
-    def updateDatabaseUser(databaseUser: DatabaseUser): Unit = ???
+    def updateDatabaseUser(databaseUser: DatabaseUser): Unit
 
-    def updateDevice(device: Device): Unit = ???
+    def updateDevice(device: Device): Unit
   }
 
 }

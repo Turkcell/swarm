@@ -30,6 +30,7 @@ import org.apache.shiro.subject.PrincipalCollection
 import org.apache.shiro.authz.{SimpleAuthorizationInfo, AuthorizationInfo}
 import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 import scala.collection.JavaConverters.asJavaCollectionConverter
+import io.swarm.infrastructure.persistence.PersistenceSessionComponent
 
 /**
  * Created by Anil Chalil on 11/14/13.
@@ -83,7 +84,7 @@ trait ClientIDSecretRealmBaseComponent {
             check(entity)
           new SimpleAuthenticationInfo(entity, secret, getName)
         case None => throw new UnknownAccountException(s"${idEntity.getClass().getName} not found for ${clientIDSecret.principalID}")
-      }, 0 nanos)
+      }, Duration.Inf)
     }
   }
 
@@ -248,7 +249,7 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent {
 }
 
 trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
-  this: TokenRepositoryComponent with ClientRepositoryComponent =>
+  this: TokenRepositoryComponent with ClientRepositoryComponent with PersistenceSessionComponent =>
 
   object AdminUserRealm extends UserInfoRealmBase {
     //initialization block
@@ -262,9 +263,9 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
       case _ => false
     }
 
-    def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getAdminUserByEmail(principal)
+    def getPrincipalByEmail(principal: String): Option[UserInfo] = persistenceSession.withSession(clientRepository.getAdminUserByEmail(principal))
 
-    def getPrincipalByUsername(principal: String): Option[UserInfo] = clientRepository.getAdminUserByUsername(principal)
+    def getPrincipalByUsername(principal: String): Option[UserInfo] = persistenceSession.withSession(clientRepository.getAdminUserByUsername(principal))
 
     override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
       val info = new SimpleAuthorizationInfo()
@@ -279,7 +280,7 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
 }
 
 trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
-  this: TokenRepositoryComponent with ClientRepositoryComponent =>
+  this: TokenRepositoryComponent with ClientRepositoryComponent with PersistenceSessionComponent =>
 
   object DatabaseUserRealm extends UserInfoRealmBase {
     //initialization block
@@ -293,9 +294,9 @@ trait DatabaseUserRealmComponent extends UserInfoRealmBaseComponent {
       case _ => false
     }
 
-    def getPrincipalByEmail(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByEmail(principal)
+    def getPrincipalByEmail(principal: String): Option[UserInfo] = persistenceSession.withSession(clientRepository.getDatabaseUserByEmail(principal))
 
-    def getPrincipalByUsername(principal: String): Option[UserInfo] = clientRepository.getDatabaseUserByUsername(principal)
+    def getPrincipalByUsername(principal: String): Option[UserInfo] = persistenceSession.withSession(clientRepository.getDatabaseUserByUsername(principal))
 
     override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
       val info = new SimpleAuthorizationInfo()
