@@ -10,11 +10,11 @@ lazy val tsdb = project.dependsOn(core)
 
 lazy val cassandrapersistence = project.dependsOn(core)
 
-lazy val jdbcpersistence = project.dependsOn(core)
+lazy val corepersistence = project.dependsOn(core)
 
-lazy val service = project.dependsOn(core,jdbcpersistence)
+lazy val coreservice = project.dependsOn(core,corepersistence)
 
-lazy val rest = project.dependsOn(core,service,cassandrapersistence).settings( webSettings :_*)
+lazy val rest = project.dependsOn(core,coreservice,cassandrapersistence).settings( webSettings :_*)
 
 libraryDependencies in ThisBuild ++= Seq(
     "com.github.nscala-time" %% "nscala-time" % "0.6.0",
