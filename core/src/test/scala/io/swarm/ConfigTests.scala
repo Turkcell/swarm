@@ -17,21 +17,18 @@
 package io.swarm
 
 import org.scalatest._
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.apache.shiro.util.ByteSource
 import com.typesafe.config.ConfigFactory
 
 /**
  * Created by Anil Chalil on 11/12/13.
  */
-@RunWith(classOf[JUnitRunner])
 class ConfigTests extends FlatSpec with ShouldMatchers {
 
   "config" should "print configuration" in {
     println(ConfigFactory.load())
   }
-  
+
   it should "provide tokensecret " in {
     Config.tokenSecretSalt === "mytokenSecret"
   }

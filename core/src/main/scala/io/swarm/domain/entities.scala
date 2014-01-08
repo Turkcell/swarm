@@ -28,17 +28,11 @@ trait IDEntity {
   def id: UUID
 }
 
-trait Versioned {
-  def version: Int
-}
-
-trait Client extends IDEntity with Versioned {
+trait Client extends IDEntity {
 
   def activated: Boolean
 
   def confirmed: Boolean
-
-  def disabled: Boolean
 
 }
 
@@ -54,7 +48,7 @@ trait UserInfo extends Client {
   def credential: String
 }
 
-trait ResourceRef extends IDEntity with Versioned {
+trait ResourceRef extends IDEntity {
   def name: String
 }
 

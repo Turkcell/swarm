@@ -21,7 +21,8 @@ package shiro
 import java.util.UUID
 import io.swarm.security.AuthPrincipalType._
 import java.nio.{ByteBuffer, BufferUnderflowException}
-import io.swarm.domain.{Device, DatabaseRef, OrganizationRef, IDEntity}
+import io.swarm.domain.IDEntity
+import io.swarm.management.Management.{Domain, DeviceRef, OrganizationRef}
 
 /**
  * Created by Anil Chalil on 11/19/13.
@@ -44,13 +45,14 @@ class ClientID private(val id: String, val principalID: UUID, val authPrincipalT
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 }
+
 object ClientID {
   def apply(id: String) = {
     try {
       if (id.length < AuthPrincipalTypeValue.base64prefixLength)
         throw NotClientIDException(s"clientID length could not be less than ${AuthPrincipalTypeValue.base64prefixLength}")
       val principalType = AuthPrincipalType.fromBase64(id.substring(0, AuthPrincipalTypeValue.base64prefixLength))
-      if (principalType == AuthPrincipalType.Admin || principalType == AuthPrincipalType.DatabaseUser)
+      if (principalType == AuthPrincipalType.Admin || principalType == AuthPrincipalType.User)
         throw NotClientIDException(s"clientID principal type cannot be $principalType")
       val bb = ByteBuffer.wrap(id.substring(AuthPrincipalTypeValue.base64prefixLength).decodeBase64)
       new ClientID(id, new UUID(bb.getLong, bb.getLong), principalType)
@@ -62,8 +64,8 @@ object ClientID {
 
   def apply(ref: IDEntity) = ref match {
     case o: OrganizationRef => new ClientID(AuthPrincipalType.Organization.base64Prefix + o.id.base64, o.id, AuthPrincipalType.Organization)
-    case d: DatabaseRef => new ClientID(AuthPrincipalType.Database.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Database)
-    case d: Device => new ClientID(AuthPrincipalType.Device.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Device)
+    case dom: Domain => new ClientID(AuthPrincipalType.Domain.base64Prefix + dom.id.base64, dom.id, AuthPrincipalType.Domain)
+    case d: DeviceRef => new ClientID(AuthPrincipalType.Device.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Device)
     case _ => throw new IllegalArgumentException(s"could not generate clientID for $ref")
   }
 }

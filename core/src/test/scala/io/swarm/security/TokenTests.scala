@@ -17,31 +17,27 @@
 package io.swarm
 package security
 
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.ShouldMatchers
 import com.github.nscala_time.time.Imports._
 import java.nio.BufferUnderflowException
-import domain._
 import java.lang.IllegalArgumentException
 import io.swarm.security.shiro._
-import io.swarm.domain.OrganizationInfo
-import io.swarm.domain.DatabaseUser
-import io.swarm.domain.DatabaseInfo
-import io.swarm.domain.AdminUser
+import io.swarm.management.Management._
+import io.swarm.management.Management.UserRef
+import io.swarm.management.Management.AdminUser
 import io.swarm.security.shiro.AuthPrincipalInfo
-import io.swarm.domain.Device
+import io.swarm.management.Management.OrganizationRef
+import scala.Some
+import io.swarm.management.Management.DeviceRef
 
 /**
  * Created by Anil Chalil on 11/12/13.
  */
-@RunWith(classOf[JUnitRunner])
 class TokenTests extends FlatSpec with ShouldMatchers {
-  val database = Database(UUIDGenerator.randomGenerator.generate(), "testdb", DatabaseMetadata(3600 * 1000 * 24), 0)
-  val org = Organization(UUIDGenerator.randomGenerator.generate(), "testorg", Set(database), 0)
-  val tmpAdminUser = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false, Set(org), 0)
-  val tmpDBUser = DatabaseUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false, Set(), 0)
+  val org = OrganizationRef(UUIDGenerator.randomGenerator.generate(), "testorg", false)
+  val tmpAdminUser = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false)
+  val userRef = UserRef(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false)
   "token " should " construct an OauthBearerToken" in {
     val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.randomGenerator.generate()), 0.toDuration, 0)
     val direct = OauthBearerToken(tokenInfo)
@@ -93,10 +89,10 @@ class TokenTests extends FlatSpec with ShouldMatchers {
   }
 
   "client id " should " should construct a ClientID" in {
-    val org = ClientID(OrganizationInfo(UUIDGenerator.randomGenerator.generate(), "org", 0))
-    val dbInfo = DatabaseInfo(UUIDGenerator.randomGenerator.generate(), "db", 0)
-    val db = ClientID(dbInfo)
-    val dev = ClientID(Device(UUIDGenerator.randomGenerator.generate(), "device", dbInfo, true, false, Set(), 0))
+    val org = ClientID(OrganizationRef(UUIDGenerator.randomGenerator.generate(), "org", false))
+    val domain = Domain(UUIDGenerator.randomGenerator.generate(), "db")
+    val db = ClientID(domain)
+    val dev = ClientID(DeviceRef(UUIDGenerator.randomGenerator.generate(), "device", true, false))
 
     org shouldBe ClientID(org.id)
     db shouldBe ClientID(db.id)
@@ -112,10 +108,10 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   it should "throw not NotClientIDException with BufferUnderflowException" in {
     val cause = intercept[NotClientIDException] {
-      ClientID(AuthPrincipalType.Database.base64Prefix + "test")
+      ClientID(AuthPrincipalType.Domain.base64Prefix + "test")
     }.getCause
     val cause2 = intercept[NotClientIDException] {
-      ClientID(AuthPrincipalType.Database.base64Prefix)
+      ClientID(AuthPrincipalType.Domain.base64Prefix)
     }.getCause
     assert(cause.isInstanceOf[BufferUnderflowException], s"Execution end with cause ${cause.getClass.getName} instead of ${classOf[BufferUnderflowException].getName}")
     assert(cause2.isInstanceOf[BufferUnderflowException], s"Execution end with cause ${cause.getClass.getName} instead of ${classOf[BufferUnderflowException].getName}")
@@ -132,13 +128,13 @@ class TokenTests extends FlatSpec with ShouldMatchers {
       ClientID(AuthPrincipalType.Admin.base64Prefix)
     }
     intercept[NotClientIDException] {
-      ClientID(AuthPrincipalType.DatabaseUser.base64Prefix)
+      ClientID(AuthPrincipalType.User.base64Prefix)
     }
   }
 
   "client secret " should "construct a ClientSecret" in {
     val orgSecret = ClientSecret(AuthPrincipalType.Organization)
-    val dbSecret = ClientSecret(AuthPrincipalType.Database)
+    val dbSecret = ClientSecret(AuthPrincipalType.Domain)
     val devSecret = ClientSecret(AuthPrincipalType.Device)
 
     orgSecret shouldBe ClientSecret(orgSecret.secret)
@@ -157,7 +153,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
       ClientSecret(AuthPrincipalType.Admin.base64Prefix)
     }
     intercept[NotClientSecretException] {
-      ClientSecret(AuthPrincipalType.DatabaseUser.base64Prefix)
+      ClientSecret(AuthPrincipalType.User.base64Prefix)
     }
   }
 
@@ -166,7 +162,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
       ClientSecret(AuthPrincipalType.Admin)
     }
     intercept[IllegalArgumentException] {
-      ClientSecret(AuthPrincipalType.DatabaseUser)
+      ClientSecret(AuthPrincipalType.User)
     }
   }
 }

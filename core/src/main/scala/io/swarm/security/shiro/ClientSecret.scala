@@ -48,7 +48,7 @@ object ClientSecret {
       if (secret.length < 4)
         throw NotClientSecretException("secret length could not be less than 4")
       val principal = AuthPrincipalType.fromBase64(secret.substring(0, AuthPrincipalTypeValue.base64prefixLength))
-      if (principal == AuthPrincipalType.Admin || principal == AuthPrincipalType.DatabaseUser)
+      if (principal == AuthPrincipalType.Admin || principal == AuthPrincipalType.User)
         throw NotClientSecretException(s"clientSecret principal type cannot be $principal")
       new ClientSecret(secret, principal)
     } catch {
@@ -57,7 +57,7 @@ object ClientSecret {
   }
 
   def apply(principalType: AuthPrincipalType) = {
-    if (principalType == AuthPrincipalType.Admin || principalType == AuthPrincipalType.DatabaseUser)
+    if (principalType == AuthPrincipalType.Admin || principalType == AuthPrincipalType.User)
       throw new IllegalArgumentException(s"could not generate ClientSecret for $principalType")
     val bb = ByteBuffer.allocate(HashedAlgorithm.currentSHALength)
     bb.put((System.currentTimeMillis() + Config.clientTokenSecretSalt + UUIDGenerator.secretGenerator.generate()).sha)

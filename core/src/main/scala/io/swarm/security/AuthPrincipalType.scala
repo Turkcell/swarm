@@ -26,23 +26,23 @@ import io.swarm.{UUIDGenerator, Config}
  */
 object AuthPrincipalType extends Enumeration {
   type AuthPrincipalType = Value
-  val Organization, Admin, Database, Device, DatabaseUser = Value
+  val Organization, Admin, Domain, Device, User = Value
 
 
   def fromBase64(s: String) = s match {
     case AuthPrincipalTypeValue.orgBase64 => Organization
     case AuthPrincipalTypeValue.adminBase64 => Admin
-    case AuthPrincipalTypeValue.databaseBase64 => Database
+    case AuthPrincipalTypeValue.databaseBase64 => Domain
     case AuthPrincipalTypeValue.deviceBase64 => Device
-    case AuthPrincipalTypeValue.databaseUserBase64 => DatabaseUser
+    case AuthPrincipalTypeValue.databaseUserBase64 => User
   }
 
   def fromPrefix(s: String) = s match {
     case "oa" => Organization
     case "ad" => Admin
-    case "db" => Database
+    case "do" => Domain
     case "dv" => Device
-    case "du" => DatabaseUser
+    case "us" => User
   }
 
 
@@ -50,17 +50,17 @@ object AuthPrincipalType extends Enumeration {
     def prefix = principalType match {
       case Organization => "oa"
       case Admin => "ad"
-      case Database => "db"
+      case Domain => "do"
       case Device => "dv"
-      case DatabaseUser => "du"
+      case User => "us"
     }
 
     def base64Prefix = principalType match {
       case Organization => AuthPrincipalTypeValue.orgBase64
       case Admin => AuthPrincipalTypeValue.adminBase64
-      case Database => AuthPrincipalTypeValue.databaseBase64
+      case Domain => AuthPrincipalTypeValue.databaseBase64
       case Device => AuthPrincipalTypeValue.deviceBase64
-      case DatabaseUser => AuthPrincipalTypeValue.databaseUserBase64
+      case User => AuthPrincipalTypeValue.databaseUserBase64
     }
   }
 
@@ -69,9 +69,9 @@ object AuthPrincipalType extends Enumeration {
   object AuthPrincipalTypeValue {
     val orgBase64 = (":" + Organization.prefix).base64
     val adminBase64 = (":" + Admin.prefix).base64
-    val databaseBase64 = (":" + Database.prefix).base64
+    val databaseBase64 = (":" + Domain.prefix).base64
     val deviceBase64 = (":" + Device.prefix).base64
-    val databaseUserBase64 = (":" + DatabaseUser.prefix).base64
+    val databaseUserBase64 = (":" + User.prefix).base64
 
     val prefixLength = 2
     val base64prefixLength = 4
