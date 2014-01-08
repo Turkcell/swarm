@@ -13,6 +13,7 @@ import io.swarm.management.Management.OrganizationRef
 import io.swarm.management.Management.DeviceRef
 import scala.Some
 import io.swarm.management.impl.ManagementDaoJDBC
+import java.util.UUID
 
 /**
  * Created by capacman on 10/26/13.
@@ -29,20 +30,27 @@ trait HSQLInMemoryManagementDaoComponent extends ManagementDaoComponent {
 
 class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with HSQLInMemoryManagementDaoComponent {
 
-  val domains = List(Domain(UUIDGenerator.randomGenerator.generate(), "dom1"), Domain(UUIDGenerator.randomGenerator.generate(), "dom1"))
-  val organization = OrganizationRef(UUIDGenerator.randomGenerator.generate(), "testorg", false)
+  val domains = List(Domain(UUIDGenerator.randomGenerator.generate(), "dom1"), Domain(UUIDGenerator.randomGenerator.generate(), "dom2"))
+  val organizations = List(OrganizationRef(UUIDGenerator.randomGenerator.generate(), "testorg", false), OrganizationRef(UUIDGenerator.randomGenerator.generate(), "withoutDom", false))
   val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false)
   val devices = List(DeviceRef(UUIDGenerator.randomGenerator.generate(), "device1", activated = true, disabled = false), DeviceRef(UUIDGenerator.randomGenerator.generate(), "device2", activated = true, disabled = false))
   val user = UserRef(UUIDGenerator.randomGenerator.generate(), Some("user"), Some("user"), "user", "user@user.com", HashedAlgorithm.toHex("test"), true, true, false)
+  //clientID: UUID, tenantID: UUID, serviceName: String, action: String, servicePerms: List[String]
+  val acls = List((devices.head.id, UUIDGenerator.randomGenerator.generate(), "service1", "get", List("a", "b", "c")), (devices.head.id, UUIDGenerator.randomGenerator.generate(), "service1", "get", List("d", "e", "f")))
 
+  implicit class TupleACL(acl: (UUID, UUID, String, String, List[String])) {
+    def toACLEntry = ACLEntry(acl._3, acl._2, acl._4, acl._5)
+  }
 
   override def beforeAll(configMap: ConfigMap) {
     db withDynSession {
       managementDao.create
-      managementDao.saveOrganizationRef(organization)
+      organizations.foreach(managementDao.saveOrganizationRef)
       devices.foreach(managementDao.saveDeviceRef)
       managementDao.saveAdminUser(admin)
       managementDao.saveUserRef(user)
+      domains.foreach(managementDao.saveDomain(_, organizations.head.id))
+      acls.foreach((managementDao.saveACL _).tupled)
     }
   }
 
@@ -55,8 +63,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
 
   it should "get organization by id" in {
     db withDynSession {
-
-      managementDao.getOrganizationRef(organization.id) should be(Some(organization))
+      managementDao.getOrganizationRef(organizations.head.id) should be(Some(organizations.head))
       managementDao.getOrganizationRef(UUIDGenerator.randomGenerator.generate()) should be(None)
     }
   }
@@ -64,23 +71,40 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   it should "throw DuplicateIDEntity for duplicate organizations" in {
     intercept[DuplicateIDEntity] {
       db withDynSession {
-
-        managementDao.saveOrganizationRef(organization)
+        managementDao.saveOrganizationRef(organizations.head)
       }
+    }
+  }
+
+  it should "get organization with domains" in {
+    db.withDynSession {
+      val org = managementDao.getOrganization(organizations.head.id)
+      org should be(Some((organizations.head, domains.toSet)))
+    }
+  }
+
+  it should "get organization with out domains" in {
+    db.withDynSession {
+      val org = managementDao.getOrganization(organizations.last.id)
+      org should be(Some((organizations.last, Set())))
     }
   }
 
   it should "get device by id " in {
     db withDynSession {
-
       managementDao.getDeviceRef(devices.head.id) should be(Some(devices.head))
+    }
+  }
+
+  it should "get device by id with perms" in {
+    db withDynSession {
+      managementDao.getDevice(devices.head.id) should be(Some((devices.head, acls.map(_.toACLEntry).toSet)))
     }
   }
 
   it should "get device withoutperm by id " in {
     db withDynSession {
-
-      //managementDao.getDeviceRef(deviceWithoutPerm.id) should be(Some(deviceWithoutPerm))
+      managementDao.getDevice(devices.last.id) should be(Some((devices.last, Set())))
     }
   }
 

@@ -62,7 +62,6 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     def withDomains = q leftJoin domains on (_.id is _.orgID)
   }
 
-
   // Definition of the Organizations table
   class Organizations(tag: Tag) extends Table[Management.OrganizationRef](tag, "ORGANIZATIONS") with HasID with HasDisabled with HasName {
     // Every table needs a * projection with the same type as the table's type parameter
@@ -86,6 +85,10 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   }
 
   val domains = TableQuery[Domains]
+
+  implicit class DevicesExtensions(val q: Query[Devices, Management.DeviceRef]) {
+    def withPermissions = q leftJoin clientPermissions on (_.id is _.clientID)
+  }
 
   class Devices(tag: Tag) extends Table[Management.DeviceRef](tag, "DEVICES") with HasID with HasDisabled {
 
@@ -136,9 +139,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   val users = TableQuery[Users]
 
-  case class ClientPermission(clientID: UUID, serviceName: String, action: String, tenantID: UUID, servicePerms: String)
-
-  class ClientPermissions(tag: Tag) extends Table[ClientPermission](tag, "CLIENT__PERMISSIONS") {
+  class ClientPermissions(tag: Tag) extends Table[(UUID, String, String, UUID, String)](tag, "CLIENT__PERMISSIONS") {
     def clientID = column[UUID]("CLIENTID")
 
     def serviceName = column[String]("SERVICE_NAME")
@@ -149,7 +150,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
     def servicePerms = column[String]("SERVICE_PERMS")
 
-    def * = (clientID, serviceName, action, tenantID, servicePerms) <>(ClientPermission.tupled, ClientPermission.unapply)
+    def * = (clientID, serviceName, action, tenantID, servicePerms)
 
     def index_clientID = index("idx_clientpermissionsclientid", clientID)
   }
@@ -167,6 +168,17 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
           }
       }.toSet))
   }
+
+  implicit class DevWithPermHelper(seq: Seq[(Management.DeviceRef, Option[String], Option[UUID], Option[String], Option[String])]) {
+    def toTuple =
+      if (seq.isEmpty)
+        None
+      else Some((seq.head._1, seq.map {
+        i =>
+          ACLEntry(i._2.get, i._3.get, i._4.get, i._5.get.split(",").toList)
+      }.toSet))
+  }
+
 
   object OrganizationQueries {
 
@@ -213,6 +225,13 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
       } yield d
       Compiled(query _)
     }
+
+    val byIDWithPerms = {
+      def query(id: Column[UUID]) = for {
+        (d, p) <- devices.where(_.id is id).withPermissions
+      } yield (d, p.serviceName.?, p.tenantID.?, p.action.?, p.servicePerms.?)
+      Compiled(query _)
+    }
   }
 
 
@@ -255,6 +274,13 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     def query(username: Column[String]) = for {
       u <- users if u.username is username
     } yield u
+    Compiled(query _)
+  }
+
+  val clientACLByClientIDAndServiceNameQuery = {
+    def query(clientID: Column[UUID], serviceName: Column[String]) = for {
+      c <- clientPermissions if (c.clientID is clientID) && (c.serviceName is serviceName)
+    } yield c
     Compiled(query _)
   }
 
@@ -361,4 +387,10 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   def getAdminUserByEmail(email: String): Option[AdminUser] = adminByEmailQuery(email).firstOption
 
   def getAdminUserByUsername(username: String): Option[AdminUser] = adminByUsernameQuery(username).firstOption
+
+  def getDevice(id: UUID): Option[Management.Device] = DeviceQueries.byIDWithPerms(id).list.toTuple
+
+  def saveACL(clientID: UUID, tenantID: UUID, serviceName: String, action: String, servicePerms: List[String]): Unit = clientPermissions.insert((clientID, serviceName, action, tenantID, servicePerms.mkString(",")))
+
+  def dropACLs(clientID: UUID, serviceName: String): Unit = clientACLByClientIDAndServiceNameQuery(clientID,serviceName).delete
 }
