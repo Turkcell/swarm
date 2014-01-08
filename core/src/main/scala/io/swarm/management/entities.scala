@@ -36,9 +36,18 @@ object Management {
   }
 
   trait ACLService {
-    def assignPermission(tenantID: UUID, clientID: UUID, action: String, extensions: List[String])
+    def assignPermission(tenantID: UUID, clientID: UUID, serviceName: String, action: String, extensions: List[String])
 
     def truncateServicePermissions(clientID: UUID, serviceName: String)
+  }
+
+  trait ACLServiceComponent {
+    this: ManagementDaoComponent =>
+    val aclService = new ACLService {
+      def truncateServicePermissions(clientID: UUID, serviceName: String): Unit = managementDao.dropACLs(clientID, serviceName)
+
+      def assignPermission(tenantID: UUID, clientID: UUID, serviceName: String, action: String, extensions: List[String]): Unit = managementDao.saveACL(tenantID, clientID, serviceName, action, extensions)
+    }
   }
 
   trait ServiceProviderRegistryComponent {
@@ -75,6 +84,7 @@ object Management {
       managementDao.removeDomain(domainID)
     }
   }
+
 
   trait OrganizationRepositoryComponent {
     this: ManagementDaoComponent =>
@@ -132,6 +142,10 @@ object Management {
   }
 
   trait ManagementDao {
+    def saveACL(clientID: UUID, tenantID: UUID, serviceName: String, action: String, servicePerms: List[String]): Unit
+
+    def dropACLs(clientID: UUID, serviceName: String): Unit
+
     def updateDeviceRef(ref: DeviceRef): DeviceRef
 
     def updateUserRef(ref: UserRef): UserRef
@@ -139,6 +153,8 @@ object Management {
     def saveDeviceRef(ref: DeviceRef): DeviceRef
 
     def saveUserRef(ref: UserRef): UserRef
+
+    def getDevice(id: UUID): Option[Device]
 
     def getDeviceRef(id: UUID): Option[DeviceRef]
 
