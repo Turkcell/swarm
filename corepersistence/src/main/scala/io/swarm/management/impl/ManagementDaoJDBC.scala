@@ -11,6 +11,7 @@ import io.swarm.management.Management.Domain
 import io.swarm.domain.{DuplicateIDEntity, UserInfo}
 import scala.slick.driver.JdbcProfile
 import java.sql.SQLIntegrityConstraintViolationException
+import io.swarm.management.dao.ManagementDao
 
 
 class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
@@ -59,7 +60,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   }
 
   implicit class OrganizationExtensions(val q: Query[Organizations, Management.OrganizationRef]) {
-    def withDomains = q leftJoin domains on (_.id is _.orgID)
+    def full = q leftJoin domains on (_.id is _.orgID) leftJoin organizationAdmins on (_._1.id is _.orgID) leftJoin adminUsers on (_._2.adminID is _.id)
   }
 
   // Definition of the Organizations table
@@ -157,26 +158,39 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   val clientPermissions = TableQuery[ClientPermissions]
 
-  implicit class OrgWithDomainHelper(seq: Seq[(Management.OrganizationRef, Option[UUID], Option[String])]) {
+  implicit class OrgWithDomainHelper(seq: Seq[(Management.OrganizationRef, (Option[UUID], Option[String]), (Option[UUID], Option[String], Option[String], Option[String], Option[String], Option[String], Option[Boolean], Option[Boolean], Option[Boolean]))]) {
     def toTuple =
       if (seq.isEmpty)
         None
-      else Some((seq.head._1, seq.map {
-        i =>
-          (i._2, i._3) match {
-            case (Some(l), Some(r)) => Management.Domain(l, r)
-          }
-      }.toSet))
+      else Some((seq.head._1, seq.map(_._2.toDomain).flatten.toSet, seq.map(_._3.toAdmin).flatten.toSet))
   }
 
-  implicit class DevWithPermHelper(seq: Seq[(Management.DeviceRef, Option[String], Option[UUID], Option[String], Option[String])]) {
+  implicit class DevWithPermHelper(seq: Seq[(Management.DeviceRef, (Option[String], Option[UUID], Option[String], Option[String]))]) {
     def toTuple =
       if (seq.isEmpty)
         None
       else Some((seq.head._1, seq.map {
         i =>
-          ACLEntry(i._2.get, i._3.get, i._4.get, i._5.get.split(",").toList)
-      }.toSet))
+          i._2.toPermission
+      }.flatten.toSet))
+  }
+
+  implicit class DomainHelper(t: (Option[UUID], Option[String])) {
+    def toDomain = t._1.map(id => Domain(id, t._2.get))
+  }
+
+  implicit class AdminHelper(t: (Option[UUID], Option[String], Option[String], Option[String], Option[String], Option[String], Option[Boolean], Option[Boolean], Option[Boolean])) {
+    def toAdmin = t._1.map {
+      id =>
+        AdminUser(id, t._2, t._3, t._4.get, t._5.get, t._6.get, t._7.get, t._8.get, t._9.get)
+    }
+  }
+
+  implicit class PermissionHelper(t: (Option[String], Option[UUID], Option[String], Option[String])) {
+    def toPermission = t._1.map {
+      serviceName =>
+        ACLEntry(serviceName, t._2.get, t._3.get, t._4.get.split(",").toList)
+    }
   }
 
 
@@ -187,12 +201,16 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     } yield (o)
 
     private def byIDWithDomainsQuery(id: Column[UUID]) = for {
-      (o, d) <- organizations.where(_.id is id).withDomains
-    } yield (o, d.id.?, d.name.?)
+      (((o, d), od), a) <- organizations.where(_.id is id).full
+    } yield (o, (d.id.?, d.name.?), (a.id.?, a.name, a.surname, a.username.?, a.email.?, a.credential.?, a.activated.?, a.confirmed.?, a.disabled.?))
 
     private def byNameQuery(name: Column[String]) = for {
       o <- organizations.where(_.name === name)
     } yield o
+
+    private def domainQuery(id: Column[UUID]) = for {
+      d <- domains if d.id is id
+    } yield d
 
     private def domainCount(id: Column[UUID]) = (for {d <- domains if d.orgID is id} yield d).length
 
@@ -200,6 +218,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     val byIDWithDomains = Compiled(byIDWithDomainsQuery _)
     val byName = Compiled(byNameQuery _)
     val countDomains = Compiled(domainCount _)
+    val domainByID = Compiled(domainQuery _)
   }
 
 
@@ -229,7 +248,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     val byIDWithPerms = {
       def query(id: Column[UUID]) = for {
         (d, p) <- devices.where(_.id is id).withPermissions
-      } yield (d, p.serviceName.?, p.tenantID.?, p.action.?, p.servicePerms.?)
+      } yield (d, (p.serviceName.?, p.tenantID.?, p.action.?, p.servicePerms.?))
       Compiled(query _)
     }
   }
@@ -284,12 +303,19 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     Compiled(query _)
   }
 
+  val clientACLByALL = {
+    def query(clientID: Column[UUID], serviceName: Column[String], action: Column[String], tenantID: Column[UUID], ext: Column[String]) = for {
+      c <- clientPermissions if (c.clientID is clientID) && (c.serviceName is serviceName) && (c.tenantID is tenantID) && (c.action is action) && (c.servicePerms is ext)
+    } yield c
+    Compiled(query _)
+  }
+
   def create {
-    (organizations.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).create
+    (organizations.ddl ++ domains.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).create
   }
 
   def drop {
-    (organizations.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).drop
+    (organizations.ddl ++ domains.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).drop
   }
 
 
@@ -365,7 +391,11 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   def getOrganizationRef(id: UUID): Option[OrganizationRef] = OrganizationQueries.byID(id).firstOption
 
-  def getOrganization(id: UUID): Option[Management.Organization] = OrganizationQueries.byIDWithDomains(id).list.toTuple
+  def getOrganization(id: UUID): Option[Management.Organization] = OrganizationQueries.byIDWithDomains(id).list.toTuple.map {
+    x =>
+      x._1.toOrganization(x._2, x._3)
+  }
+
 
   def getOrganizationRefByName(name: String): Option[OrganizationRef] = OrganizationQueries.byName(name).firstOption
 
@@ -388,9 +418,24 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   def getAdminUserByUsername(username: String): Option[AdminUser] = adminByUsernameQuery(username).firstOption
 
-  def getDevice(id: UUID): Option[Management.Device] = DeviceQueries.byIDWithPerms(id).list.toTuple
+  def getDevice(id: UUID): Option[Management.Device] = DeviceQueries.byIDWithPerms(id).list.toTuple.map {
+    t =>
+      t._1.toDevice(t._2)
+  }
 
-  def saveACL(clientID: UUID, tenantID: UUID, serviceName: String, action: String, servicePerms: List[String]): Unit = clientPermissions.insert((clientID, serviceName, action, tenantID, servicePerms.mkString(",")))
+  def updateOrganizationRef(org: OrganizationRef): OrganizationRef = {
+    OrganizationQueries.byID(org.id).update(org)
+    org
+  }
 
-  def dropACLs(clientID: UUID, serviceName: String): Unit = clientACLByClientIDAndServiceNameQuery(clientID,serviceName).delete
+  def updateDomain(domain: Domain, orgID: UUID): Domain = {
+    OrganizationQueries.domainByID(domain.id).update((domain.id, domain.name, orgID))
+    domain
+  }
+
+  def dropACLEntry(clientID: UUID, aclEntry: ACLEntry): Unit = clientACLByALL(clientID, aclEntry.serviceName, aclEntry.action, aclEntry.serviceTenantID, aclEntry.extensions.mkString(","))
+
+  def saveACL(clientID: UUID, aclEntry: ACLEntry): Unit = clientPermissions.insert((clientID, aclEntry.serviceName, aclEntry.action, aclEntry.serviceTenantID, aclEntry.extensions.mkString(",")))
+
+  def dropServiceACLS(clientID: UUID, serviceName: String): Unit = clientACLByClientIDAndServiceNameQuery(clientID,serviceName).delete
 }

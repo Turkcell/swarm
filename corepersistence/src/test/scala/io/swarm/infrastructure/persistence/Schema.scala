@@ -14,6 +14,7 @@ import io.swarm.management.Management.DeviceRef
 import scala.Some
 import io.swarm.management.impl.ManagementDaoJDBC
 import java.util.UUID
+import io.swarm.management.dao.ManagementDaoComponent
 
 /**
  * Created by capacman on 10/26/13.
@@ -36,7 +37,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   val devices = List(DeviceRef(UUIDGenerator.randomGenerator.generate(), "device1", activated = true, disabled = false), DeviceRef(UUIDGenerator.randomGenerator.generate(), "device2", activated = true, disabled = false))
   val user = UserRef(UUIDGenerator.randomGenerator.generate(), Some("user"), Some("user"), "user", "user@user.com", HashedAlgorithm.toHex("test"), true, true, false)
   //clientID: UUID, tenantID: UUID, serviceName: String, action: String, servicePerms: List[String]
-  val acls = List((devices.head.id, UUIDGenerator.randomGenerator.generate(), "service1", "get", List("a", "b", "c")), (devices.head.id, UUIDGenerator.randomGenerator.generate(), "service1", "get", List("d", "e", "f")))
+  val acls = Set(ACLEntry("service1", UUIDGenerator.randomGenerator.generate(), "get", List("a", "b", "c")), ACLEntry("service1", UUIDGenerator.randomGenerator.generate(), "get", List("d", "e", "f")))
 
   implicit class TupleACL(acl: (UUID, UUID, String, String, List[String])) {
     def toACLEntry = ACLEntry(acl._3, acl._2, acl._4, acl._5)
@@ -50,7 +51,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
       managementDao.saveAdminUser(admin)
       managementDao.saveUserRef(user)
       domains.foreach(managementDao.saveDomain(_, organizations.head.id))
-      acls.foreach((managementDao.saveACL _).tupled)
+      acls.foreach(p => managementDao.saveACL(devices.head.id, p))
     }
   }
 
@@ -79,14 +80,14 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   it should "get organization with domains" in {
     db.withDynSession {
       val org = managementDao.getOrganization(organizations.head.id)
-      org should be(Some((organizations.head, domains.toSet)))
+      org should be(Some(organizations.head.toOrganization(domains.toSet, Set())))
     }
   }
 
   it should "get organization with out domains" in {
     db.withDynSession {
       val org = managementDao.getOrganization(organizations.last.id)
-      org should be(Some((organizations.last, Set())))
+      org should be(Some((organizations.last.toOrganization(Set(), Set()))))
     }
   }
 
@@ -98,13 +99,13 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
 
   it should "get device by id with perms" in {
     db withDynSession {
-      managementDao.getDevice(devices.head.id) should be(Some((devices.head, acls.map(_.toACLEntry).toSet)))
+      managementDao.getDevice(devices.head.id) should be(Some(devices.head.toDevice(acls)))
     }
   }
 
   it should "get device withoutperm by id " in {
     db withDynSession {
-      managementDao.getDevice(devices.last.id) should be(Some((devices.last, Set())))
+      managementDao.getDevice(devices.last.id) should be(Some(devices.last.toDevice(Set())))
     }
   }
 
