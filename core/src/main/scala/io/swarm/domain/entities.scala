@@ -28,6 +28,10 @@ trait IDEntity {
   def id: UUID
 }
 
+trait Disableable {
+  def disabled: Boolean
+}
+
 trait Client extends IDEntity {
 
   def activated: Boolean
@@ -36,7 +40,7 @@ trait Client extends IDEntity {
 
 }
 
-trait UserInfo extends Client {
+trait UserInfo extends Client with Disableable {
   def username: String
 
   def name: Option[String]
@@ -51,6 +55,8 @@ trait UserInfo extends Client {
 trait ResourceRef extends IDEntity {
   def name: String
 }
+
+trait DisableableResourceRef extends ResourceRef
 
 trait DuplicateIDEntity extends IOTDBException
 
