@@ -8,7 +8,7 @@ import io.swarm.security.HashedAlgorithm
 import scala.slick.jdbc.JdbcBackend.Database
 import io.swarm.management.Management._
 import io.swarm.management.Management.Domain
-import io.swarm.management.Management.AdminUser
+import io.swarm.management.Management.AdminUserRef
 import io.swarm.management.Management.OrganizationRef
 import io.swarm.management.Management.DeviceRef
 import scala.Some
@@ -32,11 +32,10 @@ trait HSQLInMemoryManagementDaoComponent extends ManagementDaoComponent {
 class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with HSQLInMemoryManagementDaoComponent {
 
   val domains = List(Domain(UUIDGenerator.randomGenerator.generate(), "dom1"), Domain(UUIDGenerator.randomGenerator.generate(), "dom2"))
-  val organizations = List(OrganizationRef(UUIDGenerator.randomGenerator.generate(), "testorg", false), OrganizationRef(UUIDGenerator.randomGenerator.generate(), "withoutDom", false))
-  val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), true, true, false)
+  val organizations = List(OrganizationRef(UUIDGenerator.randomGenerator.generate(), "testorg", disabled = false), OrganizationRef(UUIDGenerator.randomGenerator.generate(), "withoutDom", disabled = false))
+  val admins = List(AdminUserRef(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), activated = true, confirmed = true, disabled = false), AdminUserRef(UUIDGenerator.randomGenerator.generate(), Some("test2"), Some("test2"), "test2", "test2@test.com", HashedAlgorithm.toHex("test"), activated = true, confirmed = true, disabled = false))
   val devices = List(DeviceRef(UUIDGenerator.randomGenerator.generate(), "device1", activated = true, disabled = false), DeviceRef(UUIDGenerator.randomGenerator.generate(), "device2", activated = true, disabled = false))
-  val user = UserRef(UUIDGenerator.randomGenerator.generate(), Some("user"), Some("user"), "user", "user@user.com", HashedAlgorithm.toHex("test"), true, true, false)
-  //clientID: UUID, tenantID: UUID, serviceName: String, action: String, servicePerms: List[String]
+  val users = List(UserRef(UUIDGenerator.randomGenerator.generate(), Some("user"), Some("user"), "user", "user@user.com", HashedAlgorithm.toHex("test"), activated = true, confirmed = true, disabled = false), UserRef(UUIDGenerator.randomGenerator.generate(), Some("user2"), Some("user2"), "user2", "user2@user.com", HashedAlgorithm.toHex("test"), activated = true, confirmed = true, disabled = false))
   val acls = Set(ACLEntry("service1", UUIDGenerator.randomGenerator.generate(), "get", List("a", "b", "c")), ACLEntry("service1", UUIDGenerator.randomGenerator.generate(), "get", List("d", "e", "f")))
 
   implicit class TupleACL(acl: (UUID, UUID, String, String, List[String])) {
@@ -48,10 +47,12 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
       managementDao.create
       organizations.foreach(managementDao.saveOrganizationRef)
       devices.foreach(managementDao.saveDeviceRef)
-      managementDao.saveAdminUser(admin)
-      managementDao.saveUserRef(user)
+      admins.foreach(managementDao.saveAdminUserRef)
+      managementDao.associateAdmin(organizations.head.id, admins.head.id)
+      users.foreach(managementDao.saveUserRef)
       domains.foreach(managementDao.saveDomain(_, organizations.head.id))
       acls.foreach(p => managementDao.saveACL(devices.head.id, p))
+      acls.foreach(p => managementDao.saveACL(users.head.id, p))
     }
   }
 
@@ -80,7 +81,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   it should "get organization with domains" in {
     db.withDynSession {
       val org = managementDao.getOrganization(organizations.head.id)
-      org should be(Some(organizations.head.toOrganization(domains.toSet, Set())))
+      org should be(Some(organizations.head.toOrganization(domains.toSet, Set(admins.head))))
     }
   }
 
@@ -111,22 +112,14 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
 
   it should "get device by deviceId " in {
     db withDynSession {
-
       managementDao.getDeviceRefByDeviceID(devices.head.deviceID) should be(Some(devices.head))
     }
   }
 
-  it should "get device withoutperm by deviceId " in {
-    db withDynSession {
-
-      //managementDao.getDeviceByDeviceID(deviceWithoutPerm.deviceID) should be(Some(deviceWithoutPerm))
-    }
-  }
 
   it should "throw DuplicateIDEntity for duplicate devices" in {
     intercept[DuplicateIDEntity] {
       db withDynSession {
-
         managementDao.saveDeviceRef(devices.head)
       }
     }
@@ -139,96 +132,126 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
     }
   }
 
-  it should "get admin by id" in {
+  it should "get adminref by id" in {
     db withDynSession {
-
-      managementDao.getAdminUser(admin.id) should be(Some(admin))
+      managementDao.getAdminUserRef(admins.head.id) should be(Some(admins.head))
     }
   }
 
-  it should "get adminwithoutorg by id" in {
+  it should "get adminref by email" in {
     db withDynSession {
+      managementDao.getAdminUserRefByEmail(admins.head.email) should be(Some(admins.head))
+    }
+  }
 
-      //managementDao.getAdminByID(adminWithoutOrg.id) should be(Some(adminWithoutOrg))
+  it should "get adminref by username" in {
+    db withDynSession {
+      managementDao.getAdminUserRefByUsername(admins.head.username) should be(Some(admins.head))
+    }
+  }
+
+  it should "get admin by id" in {
+    db withDynSession {
+      managementDao.getAdminUser(admins.head.id) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
     }
   }
 
   it should "get admin by email" in {
     db withDynSession {
-
-      managementDao.getAdminUserByEmail(admin.email) should be(Some(admin))
-    }
-  }
-
-  it should "get adminwithoutorg by email" in {
-    db withDynSession {
-
-      //managementDao.getAdminByEmail(adminWithoutOrg.email) should be(Some(adminWithoutOrg))
+      managementDao.getAdminUserByEmail(admins.head.email) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
     }
   }
 
   it should "get admin by username" in {
     db withDynSession {
+      managementDao.getAdminUserByUsername(admins.head.username) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
+    }
+  }
 
-      managementDao.getAdminUserByUsername(admin.username) should be(Some(admin))
+  it should "get adminwithoutorg by id" in {
+    db withDynSession {
+      managementDao.getAdminUser(admins.last.id) should be(Some(admins.last.toAdminUser(Set())))
+    }
+  }
+
+  it should "get adminwithoutorg by email" in {
+    db withDynSession {
+      managementDao.getAdminUserByEmail(admins.last.email) should be(Some(admins.last.toAdminUser(Set())))
     }
   }
 
   it should "get adminwithoutorg by username" in {
     db withDynSession {
-
-      // managementDao.getAdminByUsername(adminWithoutOrg.username) should be(Some(adminWithoutOrg))
+      managementDao.getAdminUserByUsername(admins.last.username) should be(Some(admins.last.toAdminUser(Set())))
     }
   }
 
   it should "throw DuplicateIDEntity for duplicate admins" in {
     intercept[DuplicateIDEntity] {
       db withDynSession {
-        managementDao.saveAdminUser(admin)
+        managementDao.saveAdminUserRef(admins.head)
       }
+    }
+  }
+
+  it should "get userref by id" in {
+    db withDynSession {
+      managementDao.getUserRef(users.head.id) should be(Some(users.head))
+    }
+  }
+
+  it should "get userref by email" in {
+    db withDynSession {
+      managementDao.getUserRefByEmail(users.head.email) should be(Some(users.head))
+    }
+  }
+
+  it should "get userref by username" in {
+    db withDynSession {
+      managementDao.getUserRefByUsername(users.head.username) should be(Some(users.head))
     }
   }
 
   it should "get user by id" in {
     db withDynSession {
-      managementDao.getUserRef(user.id) should be(Some(user))
-    }
-  }
-
-  it should "get userWithoutPerm by id" in {
-    db withDynSession {
-      //managementDao.getUser(userWithoutPerm.id) should be(Some(userWithoutPerm))
+      managementDao.getUser(users.head.id) should be(Some(users.head.toUser(acls)))
     }
   }
 
   it should "get user by email" in {
     db withDynSession {
-      managementDao.getUserRefByEmail(user.email) should be(Some(user))
-    }
-  }
-
-  it should "get userWithoutPerm by email" in {
-    db withDynSession {
-      //managementDao.getUserByEmail(userWithoutPerm.email) should be(Some(userWithoutPerm))
+      managementDao.getUserByEmail(users.head.email) should be(Some(users.head.toUser(acls)))
     }
   }
 
   it should "get user by username" in {
     db withDynSession {
-      managementDao.getUserRefByUsername(user.username) should be(Some(user))
+      managementDao.getUserByUsername(users.head.username) should be(Some(users.head.toUser(acls)))
+    }
+  }
+
+  it should "get userWithoutPerm by id" in {
+    db withDynSession {
+      managementDao.getUser(users.last.id) should be(Some(users.last.toUser(Set())))
+    }
+  }
+
+  it should "get userWithoutPerm by email" in {
+    db withDynSession {
+      managementDao.getUserByEmail(users.last.email) should be(Some(users.last.toUser(Set())))
     }
   }
 
   it should "get userWithoutPerm by username" in {
     db withDynSession {
-      //managementDao.getUserByUsername(userWithoutPerm.username) should be(Some(userWithoutPerm))
+      managementDao.getUserByUsername(users.last.username) should be(Some(users.last.toUser(Set())))
     }
   }
 
   it should "throw DuplicateIDEntity for duplicate users" in {
     intercept[DuplicateIDEntity] {
       db withDynSession {
-        managementDao.saveUserRef(user)
+        managementDao.saveUserRef(users.head)
       }
     }
   }

@@ -5,7 +5,7 @@ import scala.Predef._
 
 import io.swarm.management.Management
 import io.swarm.management.Management._
-import io.swarm.management.Management.AdminUser
+import io.swarm.management.Management.AdminUserRef
 import io.swarm.management.Management.OrganizationRef
 import io.swarm.management.Management.Domain
 import io.swarm.domain.{DuplicateIDEntity, UserInfo}
@@ -104,9 +104,13 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   val devices = TableQuery[Devices]
 
-  class AdminUsers(tag: Tag) extends Table[Management.AdminUser](tag, "ADMIN_USERS") with UserTable {
+  implicit class AdminExtensions(val q: Query[AdminUsers, Management.AdminUserRef]) {
+    def withOrganizationRefs = q leftJoin organizationAdmins on (_.id is _.adminID) leftJoin organizations on (_._2.orgID is _.id)
+  }
 
-    def * = (id, name, surname, username, email, credential, activated, confirmed, disabled) <>(Management.AdminUser.tupled, Management.AdminUser.unapply)
+  class AdminUsers(tag: Tag) extends Table[Management.AdminUserRef](tag, "ADMIN_USERS") with UserTable {
+
+    def * = (id, name, surname, username, email, credential, activated, confirmed, disabled) <>(Management.AdminUserRef.tupled, Management.AdminUserRef.unapply)
 
     def index_email = index("idx_adminusersemail", email, unique = true)
 
@@ -128,6 +132,10 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   }
 
   val organizationAdmins = TableQuery[OrganizationAdmins]
+
+  implicit class UsersExtensions(val q: Query[Users, Management.UserRef]) {
+    def withPermissions = q leftJoin clientPermissions on (_.id is _.clientID)
+  }
 
   class Users(tag: Tag) extends Table[Management.UserRef](tag, "DATABASE_USERS") with UserTable {
 
@@ -175,6 +183,26 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
       }.flatten.toSet))
   }
 
+  implicit class UserWithPermHelper(seq: Seq[(Management.UserRef, (Option[String], Option[UUID], Option[String], Option[String]))]) {
+    def toUser =
+      if (seq.isEmpty)
+        None
+      else Some((seq.head._1, seq.map {
+        i =>
+          i._2.toPermission
+      }.flatten.toSet))
+  }
+
+  implicit class AdminWithOrgRefHelper(seq: Seq[(Management.AdminUserRef, (Option[UUID], Option[String], Option[Boolean]))]) {
+    def toAdminUser =
+      if (seq.isEmpty)
+        None
+      else Some((seq.head._1, seq.map {
+        i =>
+          i._2.toOrganizationRef
+      }.flatten.toSet))
+  }
+
   implicit class DomainHelper(t: (Option[UUID], Option[String])) {
     def toDomain = t._1.map(id => Domain(id, t._2.get))
   }
@@ -182,7 +210,14 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   implicit class AdminHelper(t: (Option[UUID], Option[String], Option[String], Option[String], Option[String], Option[String], Option[Boolean], Option[Boolean], Option[Boolean])) {
     def toAdmin = t._1.map {
       id =>
-        AdminUser(id, t._2, t._3, t._4.get, t._5.get, t._6.get, t._7.get, t._8.get, t._9.get)
+        AdminUserRef(id, t._2, t._3, t._4.get, t._5.get, t._6.get, t._7.get, t._8.get, t._9.get)
+    }
+  }
+
+  implicit class OrganizationRefHelper(t: (Option[UUID], Option[String], Option[Boolean])) {
+    def toOrganizationRef = t._1.map {
+      id =>
+        OrganizationRef(id, t._2.get, t._3.get)
     }
   }
 
@@ -253,48 +288,96 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     }
   }
 
+  object AdminUserQueries {
+    val adminRefByID = {
+      def query(id: Column[UUID]) = for {
+        a <- adminUsers if a.id is id
+      } yield a
+      Compiled(query _)
+    }
 
-  val adminByIDQuery = {
-    def query(id: Column[UUID]) = for {
-      a <- adminUsers if a.id is id
-    } yield a
-    Compiled(query _)
+    val adminRefByEmail = {
+      def query(email: Column[String]) = for {
+        a <- adminUsers if a.email is email
+      } yield a
+      Compiled(query _)
+    }
+
+    val adminRefByUsername = {
+      def query(username: Column[String]) = for {
+        a <- adminUsers if a.username is username
+      } yield a
+      Compiled(query _)
+    }
+
+    val adminByID = {
+      def query(id: Column[UUID]) = for {
+        ((a, oa), o) <- adminUsers.where(_.id is id).withOrganizationRefs
+      } yield (a, (o.id.?, o.name.?, o.disabled.?))
+      Compiled(query _)
+    }
+
+    val adminByEmail = {
+      def query(email: Column[String]) = for {
+        ((a, oa), o) <- adminUsers.where(_.email is email).withOrganizationRefs
+      } yield (a, (o.id.?, o.name.?, o.disabled.?))
+      Compiled(query _)
+    }
+
+    val adminByUsername = {
+      def query(username: Column[String]) = for {
+        ((a, oa), o) <- adminUsers.where(_.username is username).withOrganizationRefs
+      } yield (a, (o.id.?, o.name.?, o.disabled.?))
+      Compiled(query _)
+    }
   }
 
-  val adminByEmailQuery = {
-    def query(email: Column[String]) = for {
-      a <- adminUsers if a.email is email
-    } yield a
-    Compiled(query _)
+
+  object UserQueries {
+
+    val userRefByID = {
+      def query(id: Column[UUID]) = for {
+        u <- users if u.id is id
+      } yield u
+      Compiled(query _)
+    }
+
+    val userRefByEmail = {
+      def query(email: Column[String]) = for {
+        u <- users if u.email is email
+      } yield u
+      Compiled(query _)
+    }
+
+    val userRefByUsername = {
+      def query(username: Column[String]) = for {
+        u <- users if u.username is username
+      } yield u
+      Compiled(query _)
+    }
+
+    val userByID = {
+      def query(id: Column[UUID]) = for {
+        (u, p) <- users.where(_.id is id).withPermissions
+      } yield (u, (p.serviceName.?, p.tenantID.?, p.action.?, p.servicePerms.?))
+      Compiled(query _)
+    }
+
+    val userByEmail = {
+      def query(email: Column[String]) = for {
+        (u, p) <- users.where(_.email is email).withPermissions
+      } yield (u, (p.serviceName.?, p.tenantID.?, p.action.?, p.servicePerms.?))
+      Compiled(query _)
+    }
+
+    val userByUsername = {
+      def query(username: Column[String]) = for {
+        (u, p) <- users.where(_.username is username).withPermissions
+      } yield (u, (p.serviceName.?, p.tenantID.?, p.action.?, p.servicePerms.?))
+      Compiled(query _)
+    }
   }
 
-  val adminByUsernameQuery = {
-    def query(username: Column[String]) = for {
-      a <- adminUsers if a.username is username
-    } yield a
-    Compiled(query _)
-  }
-
-  val userByIDQuery = {
-    def query(id: Column[UUID]) = for {
-      u <- users if u.id is id
-    } yield u
-    Compiled(query _)
-  }
-
-  val userByEmailQuery = {
-    def query(email: Column[String]) = for {
-      u <- users if u.email is email
-    } yield u
-    Compiled(query _)
-  }
-
-  val userByUsernameQuery = {
-    def query(username: Column[String]) = for {
-      u <- users if u.username is username
-    } yield u
-    Compiled(query _)
-  }
 
   val clientACLByClientIDAndServiceNameQuery = {
     def query(clientID: Column[UUID], serviceName: Column[String]) = for {
@@ -326,7 +409,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   }
 
 
-  def saveAdminUser(admin: Management.AdminUser) = {
+  def saveAdminUserRef(admin: Management.AdminUserRef) = {
     try {
       adminUsers.insert(admin)
     } catch {
@@ -335,8 +418,8 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     admin
   }
 
-  def updateAdminUser(admin: Management.AdminUser) = {
-    adminByIDQuery(admin.id).update(admin)
+  def updateAdminUserRef(admin: Management.AdminUserRef) = {
+    AdminUserQueries.adminRefByID(admin.id).update(admin)
     admin
   }
 
@@ -346,7 +429,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   }
 
   def updateUserRef(ref: UserRef): UserRef = {
-    userByIDQuery(ref.id).update(ref)
+    UserQueries.userRefByID(ref.id).update(ref)
     ref
   }
 
@@ -372,11 +455,11 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   def getDeviceRefByDeviceID(deviceID: String): Option[DeviceRef] = DeviceQueries.byDeviceID(deviceID).firstOption
 
-  def getUserRef(id: UUID): Option[UserInfo] = userByIDQuery(id).firstOption
+  def getUserRef(id: UUID): Option[UserRef] = UserQueries.userRefByID(id).firstOption
 
-  def getUserRefByUsername(username: String): Option[UserInfo] = userByUsernameQuery(username).firstOption
+  def getUserRefByUsername(username: String): Option[UserRef] = UserQueries.userRefByUsername(username).firstOption
 
-  def getUserRefByEmail(email: String): Option[UserRef] = userByEmailQuery(email).firstOption
+  def getUserRefByEmail(email: String): Option[UserRef] = UserQueries.userRefByEmail(email).firstOption
 
   def associateAdmin(orgID: UUID, adminID: UUID): Unit = organizationAdmins.insert((orgID, adminID))
 
@@ -412,11 +495,11 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     domain
   }
 
-  def getAdminUser(id: UUID): Option[AdminUser] = adminByIDQuery(id).firstOption
+  def getAdminUserRef(id: UUID): Option[AdminUserRef] = AdminUserQueries.adminRefByID(id).firstOption
 
-  def getAdminUserByEmail(email: String): Option[AdminUser] = adminByEmailQuery(email).firstOption
+  def getAdminUserRefByEmail(email: String): Option[AdminUserRef] = AdminUserQueries.adminRefByEmail(email).firstOption
 
-  def getAdminUserByUsername(username: String): Option[AdminUser] = adminByUsernameQuery(username).firstOption
+  def getAdminUserRefByUsername(username: String): Option[AdminUserRef] = AdminUserQueries.adminRefByUsername(username).firstOption
 
   def getDevice(id: UUID): Option[Management.Device] = DeviceQueries.byIDWithPerms(id).list.toTuple.map {
     t =>
@@ -437,5 +520,29 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   def saveACL(clientID: UUID, aclEntry: ACLEntry): Unit = clientPermissions.insert((clientID, aclEntry.serviceName, aclEntry.action, aclEntry.serviceTenantID, aclEntry.extensions.mkString(",")))
 
-  def dropServiceACLS(clientID: UUID, serviceName: String): Unit = clientACLByClientIDAndServiceNameQuery(clientID,serviceName).delete
+  def dropServiceACLS(clientID: UUID, serviceName: String): Unit = clientACLByClientIDAndServiceNameQuery(clientID, serviceName).delete
+
+  implicit def userTuple2User(userTuple: Option[(Management.UserRef, Set[Management.ACLEntry])]) = userTuple.map {
+    tuple =>
+      tuple._1.toUser(tuple._2)
+  }
+
+  def getUserByEmail(email: String): Option[User] = UserQueries.userByEmail(email).list.toUser
+
+  def getUserByUsername(username: String): Option[User] = UserQueries.userByUsername(username).list.toUser
+
+  def getUser(id: UUID): Option[User] = UserQueries.userByID(id).list.toUser
+
+  implicit def adminTuple2Admin(adminTuple: Option[(Management.AdminUserRef, Set[Management.OrganizationRef])]) = adminTuple.map {
+    tuple =>
+      tuple._1.toAdminUser(tuple._2)
+  }
+
+  def getAdminUserByUsername(username: String): Option[AdminUser] = AdminUserQueries.adminByUsername(username).list.toAdminUser
+
+  def getAdminUserByEmail(email: String): Option[AdminUser] = AdminUserQueries.adminByEmail(email).list.toAdminUser
+
+  def getAdminUser(uuid: UUID): Option[AdminUser] = AdminUserQueries.adminByID(uuid).list.toAdminUser
+
+
 }
