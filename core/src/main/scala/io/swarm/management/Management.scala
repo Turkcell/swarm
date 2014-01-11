@@ -9,19 +9,30 @@ import io.swarm.management.dao.ManagementDaoComponent
  * Created by Anil Chalil on 12/18/13.
  */
 object Management {
-  type User = (UserRef, Set[ACLEntry])
 
-  case class AdminUser(id: UUID, name: Option[String], surname: Option[String], username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean)
+  case class AdminUserRef(id: UUID, name: Option[String], surname: Option[String], username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo {
+    def toAdminUser(orgs: Set[OrganizationRef]) = AdminUser(id, name, surname, username, email, credential, activated, confirmed, disabled, orgs)
+  }
 
-  case class UserRef(id: UUID, name: Option[String], surname: Option[String], username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo
+  case class AdminUser(id: UUID, name: Option[String], surname: Option[String], username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean, organizations: Set[OrganizationRef]) extends UserInfo {
+    def adminUserRef = AdminUserRef(id, name, surname, username, email, credential, activated, confirmed, disabled)
+  }
+
+  case class UserRef(id: UUID, name: Option[String], surname: Option[String], username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean) extends UserInfo {
+    def toUser(permissions: Set[ACLEntry]) = User(id, name, surname, username, email, credential, activated, confirmed, disabled, permissions)
+  }
+
+  case class User(id: UUID, name: Option[String], surname: Option[String], username: String, email: String, credential: String, activated: Boolean, confirmed: Boolean, disabled: Boolean, permissions: Set[ACLEntry]) extends UserInfo {
+    def userRef = UserRef(id, name, surname, username, email, credential, activated, confirmed, disabled)
+  }
 
   case class ACLEntry(serviceName: String, serviceTenantID: UUID, action: String, extensions: List[String])
 
   case class OrganizationRef(id: UUID, name: String, disabled: Boolean) extends DisableableResourceRef {
-    def toOrganization(domains: Set[Domain], admins: Set[AdminUser]) = Organization(id, name, disabled, domains, admins)
+    def toOrganization(domains: Set[Domain], admins: Set[AdminUserRef]) = Organization(id, name, disabled, domains, admins)
   }
 
-  case class Organization(id: UUID, name: String, disabled: Boolean, domains: Set[Domain], admins: Set[AdminUser]) {
+  case class Organization(id: UUID, name: String, disabled: Boolean, domains: Set[Domain], admins: Set[AdminUserRef]) {
     def organizationRef = OrganizationRef(id, name, disabled)
   }
 
@@ -88,15 +99,21 @@ object Management {
 
     def addAdminToOrganization(adminID: UUID, orgID: UUID)
 
+    def getAdminUserRef(id: UUID): Option[AdminUserRef]
+
+    def getAdminUserRefByEmail(email: String): Option[AdminUserRef]
+
+    def getAdminUserRefByUsername(username: String): Option[AdminUserRef]
+
     def getAdminUser(id: UUID): Option[AdminUser]
 
     def getAdminUserByEmail(email: String): Option[AdminUser]
 
     def getAdminUserByUsername(username: String): Option[AdminUser]
 
-    def saveAdminUser(user: AdminUser): AdminUser
+    def saveAdminUser(user: AdminUserRef): AdminUserRef
 
-    def updateAdminUser(adminUser: AdminUser): AdminUser
+    def updateAdminUser(adminUser: AdminUserRef): AdminUserRef
 
     def getDeviceRef(id: UUID): Option[DeviceRef]
 
@@ -117,9 +134,15 @@ object Management {
 
     def getUserRefByEmail(email: String): Option[UserRef]
 
-    def getUserRefByUsername(username: String): Option[UserInfo]
+    def getUserRefByUsername(username: String): Option[UserRef]
 
-    def getUserRef(id: UUID): Option[UserInfo]
+    def getUserRef(id: UUID): Option[UserRef]
+
+    def getUserByEmail(email: String): Option[User]
+
+    def getUserByUsername(username: String): Option[User]
+
+    def getUser(id: UUID): Option[User]
 
     def saveUserRef(user: UserRef): UserRef
 

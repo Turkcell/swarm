@@ -34,11 +34,17 @@ trait ManagementDao {
 
   def getDeviceRefByDeviceID(deviceID: String): Option[DeviceRef]
 
-  def getUserRef(id: UUID): Option[UserInfo]
+  def getUserRef(id: UUID): Option[UserRef]
 
-  def getUserRefByUsername(username: String): Option[UserInfo]
+  def getUserRefByUsername(username: String): Option[UserRef]
 
   def getUserRefByEmail(email: String): Option[UserRef]
+
+  def getUser(id: UUID): Option[User]
+
+  def getUserByUsername(username: String): Option[User]
+
+  def getUserByEmail(email: String): Option[User]
 
   def associateAdmin(orgID: UUID, adminID: UUID)
 
@@ -58,15 +64,21 @@ trait ManagementDao {
 
   def saveDomain(domain: Domain, orgID: UUID): Domain
 
+  def getAdminUserRef(uuid: UUID): Option[AdminUserRef]
+
+  def getAdminUserRefByEmail(email: String): Option[AdminUserRef]
+
+  def getAdminUserRefByUsername(username: String): Option[AdminUserRef]
+
   def getAdminUser(uuid: UUID): Option[AdminUser]
 
   def getAdminUserByEmail(email: String): Option[AdminUser]
 
   def getAdminUserByUsername(username: String): Option[AdminUser]
 
-  def saveAdminUser(user: AdminUser): AdminUser
+  def saveAdminUserRef(user: AdminUserRef): AdminUserRef
 
-  def updateAdminUser(adminUser: AdminUser): AdminUser
+  def updateAdminUserRef(adminUser: AdminUserRef): AdminUserRef
 }
 
 trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent {
@@ -110,15 +122,15 @@ trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent
 
     def addAdminToOrganization(adminID: UUID, orgID: UUID) = managementDao.associateAdmin(orgID, adminID)
 
-    def getAdminUser(id: UUID): Option[AdminUser] = managementDao.getAdminUser(id)
+    def getAdminUserRef(id: UUID): Option[AdminUserRef] = managementDao.getAdminUserRef(id)
 
-    def getAdminUserByEmail(email: String): Option[AdminUser] = managementDao.getAdminUserByEmail(email)
+    def getAdminUserRefByEmail(email: String): Option[AdminUserRef] = managementDao.getAdminUserRefByEmail(email)
 
-    def getAdminUserByUsername(username: String): Option[AdminUser] = managementDao.getAdminUserByUsername(username)
+    def getAdminUserRefByUsername(username: String): Option[AdminUserRef] = managementDao.getAdminUserRefByUsername(username)
 
-    def saveAdminUser(user: AdminUser): AdminUser = managementDao.saveAdminUser(user)
+    def saveAdminUser(user: AdminUserRef): AdminUserRef = managementDao.saveAdminUserRef(user)
 
-    def updateAdminUser(adminUser: AdminUser): AdminUser = managementDao.updateAdminUser(adminUser)
+    def updateAdminUser(adminUser: AdminUserRef): AdminUserRef = managementDao.updateAdminUserRef(adminUser)
 
     def getDeviceRef(id: UUID): Option[DeviceRef] = managementDao.getDeviceRef(id)
 
@@ -149,6 +161,12 @@ trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent
       device.permissions.foreach(permission => managementDao.saveACL(device.id, permission))
       device
     }
+
+    def getAdminUserByUsername(username: String): Option[AdminUser] = managementDao.getAdminUserByUsername(username)
+
+    def getAdminUserByEmail(email: String): Option[AdminUser] = managementDao.getAdminUserByEmail(email)
+
+    def getAdminUser(id: UUID): Option[AdminUser] = managementDao.getAdminUser(id)
   }
 
 }
@@ -159,14 +177,19 @@ trait ClientRepositoryDaoComponent extends ClientRepositoryComponent {
 
     def getUserRefByEmail(email: String): Option[UserRef] = managementDao.getUserRefByEmail(email)
 
-    def getUserRefByUsername(username: String): Option[UserInfo] = managementDao.getUserRefByUsername(username)
+    def getUserRefByUsername(username: String): Option[UserRef] = managementDao.getUserRefByUsername(username)
 
-    def getUserRef(id: UUID): Option[UserInfo] = managementDao.getUserRef(id)
+    def getUserRef(id: UUID): Option[UserRef] = managementDao.getUserRef(id)
 
     def saveUserRef(user: UserRef): UserRef = managementDao.saveUserRef(user)
 
     def updateUserRef(user: UserRef): UserRef = managementDao.updateUserRef(user)
 
+    def getUser(id: UUID): Option[User] = managementDao.getUser(id)
+
+    def getUserByUsername(username: String): Option[User] = managementDao.getUserByUsername(username)
+
+    def getUserByEmail(email: String): Option[User] = managementDao.getUserByEmail(email)
   }
 
   trait ACLServiceComponentDao extends ACLServiceComponent {

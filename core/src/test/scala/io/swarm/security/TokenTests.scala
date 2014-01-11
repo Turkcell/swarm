@@ -25,7 +25,7 @@ import java.lang.IllegalArgumentException
 import io.swarm.security.shiro._
 import io.swarm.management.Management._
 import io.swarm.management.Management.UserRef
-import io.swarm.management.Management.AdminUser
+import io.swarm.management.Management.AdminUserRef
 import io.swarm.security.shiro.AuthPrincipalInfo
 import io.swarm.management.Management.OrganizationRef
 import scala.Some
@@ -36,7 +36,7 @@ import io.swarm.management.Management.DeviceRef
  */
 class TokenTests extends FlatSpec with ShouldMatchers {
   val org = OrganizationRef(UUIDGenerator.randomGenerator.generate(), "testorg", false)
-  val tmpAdminUser = AdminUser(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false)
+  val tmpAdminUser = AdminUserRef(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false)
   val userRef = UserRef(UUIDGenerator.randomGenerator.generate(), Some("anil"), Some("halil"), "user1", "user@user.com", HashedAlgorithm.toHex("mypass"), activated = true, confirmed = true, disabled = false)
   "token " should " construct an OauthBearerToken" in {
     val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Admin, UUIDGenerator.randomGenerator.generate()), 0.toDuration, 0)
