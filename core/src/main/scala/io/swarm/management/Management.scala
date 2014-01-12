@@ -65,7 +65,9 @@ object Management {
   }
 
   trait ACLService {
-    def truncateServicePermissions(clientID: UUID, serviceName: String)
+    type Session
+
+    def truncateServicePermissions(clientID: UUID, serviceName: String)(implicit session: Session)
   }
 
   trait ACLServiceComponent {
@@ -92,48 +94,49 @@ object Management {
   }
 
   trait OrganizationRepository {
+    type Session
 
-    def saveOrganization(org: Organization): Organization
+    def saveOrganization(org: Organization)(implicit session: Session): Organization
 
-    def updateOrganization(id: UUID, f: Organization => Organization): Organization
+    def updateOrganization(id: UUID, f: Organization => Organization)(implicit session: Session): Organization
 
-    def getOrganizationRef(id: UUID): Option[OrganizationRef]
+    def getOrganizationRef(id: UUID)(implicit session: Session): Option[OrganizationRef]
 
-    def getOrganization(id: UUID): Option[Organization]
+    def getOrganization(id: UUID)(implicit session: Session): Option[Organization]
 
-    def getOrganizationByName(name: String): Option[OrganizationRef]
+    def getOrganizationByName(name: String)(implicit session: Session): Option[OrganizationRef]
 
-    def getDomain(id: UUID): Option[Domain]
+    def getDomain(id: UUID)(implicit session: Session): Option[Domain]
 
-    def addAdminToOrganization(adminID: UUID, orgID: UUID)
+    def addAdminToOrganization(adminID: UUID, orgID: UUID)(implicit session: Session)
 
-    def getAdminUserRef(id: UUID): Option[AdminUserRef]
+    def getAdminUserRef(id: UUID)(implicit session: Session): Option[AdminUserRef]
 
-    def getAdminUserRefByEmail(email: String): Option[AdminUserRef]
+    def getAdminUserRefByEmail(email: String)(implicit session: Session): Option[AdminUserRef]
 
-    def getAdminUserRefByUsername(username: String): Option[AdminUserRef]
+    def getAdminUserRefByUsername(username: String)(implicit session: Session): Option[AdminUserRef]
 
-    def getAdminUser(id: UUID): Option[AdminUser]
+    def getAdminUser(id: UUID)(implicit session: Session): Option[AdminUser]
 
-    def getAdminUserByEmail(email: String): Option[AdminUser]
+    def getAdminUserByEmail(email: String)(implicit session: Session): Option[AdminUser]
 
-    def getAdminUserByUsername(username: String): Option[AdminUser]
+    def getAdminUserByUsername(username: String)(implicit session: Session): Option[AdminUser]
 
-    def saveAdminUser(user: AdminUserRef): AdminUserRef
+    def saveAdminUser(user: AdminUserRef)(implicit session: Session): AdminUserRef
 
-    def updateAdminUser(adminUser: AdminUserRef): AdminUserRef
+    def updateAdminUser(adminUser: AdminUserRef)(implicit session: Session): AdminUserRef
 
-    def getDeviceRef(id: UUID): Option[DeviceRef]
+    def getDeviceRef(id: UUID)(implicit session: Session): Option[DeviceRef]
 
-    def getDevice(id: UUID): Option[Device]
+    def getDevice(id: UUID)(implicit session: Session): Option[Device]
 
-    def saveDeviceRef(device: DeviceRef): DeviceRef
+    def saveDeviceRef(device: DeviceRef)(implicit session: Session): DeviceRef
 
-    def updateDeviceRef(device: DeviceRef): DeviceRef
+    def updateDeviceRef(device: DeviceRef)(implicit session: Session): DeviceRef
 
-    def saveDevice(device: Device): Device
+    def saveDevice(device: Device)(implicit session: Session): Device
 
-    def updateDevice(id: UUID, f: Device => Device): Device
+    def updateDevice(id: UUID, f: Device => Device)(implicit session: Session): Device
   }
 
   trait ClientRepositoryComponent {
@@ -141,22 +144,23 @@ object Management {
   }
 
   trait ClientRepository {
+    type Session
 
-    def getUserRefByEmail(email: String): Option[UserRef]
+    def getUserRefByEmail(email: String)(implicit session: Session): Option[UserRef]
 
-    def getUserRefByUsername(username: String): Option[UserRef]
+    def getUserRefByUsername(username: String)(implicit session: Session): Option[UserRef]
 
-    def getUserRef(id: UUID): Option[UserRef]
+    def getUserRef(id: UUID)(implicit session: Session): Option[UserRef]
 
-    def getUserByEmail(email: String): Option[User]
+    def getUserByEmail(email: String)(implicit session: Session): Option[User]
 
-    def getUserByUsername(username: String): Option[User]
+    def getUserByUsername(username: String)(implicit session: Session): Option[User]
 
-    def getUser(id: UUID): Option[User]
+    def getUser(id: UUID)(implicit session: Session): Option[User]
 
-    def saveUserRef(user: UserRef): UserRef
+    def saveUserRef(user: UserRef)(implicit session: Session): UserRef
 
-    def updateUserRef(user: UserRef): UserRef
+    def updateUserRef(user: UserRef)(implicit session: Session): UserRef
   }
 
 }
