@@ -12,13 +12,14 @@ import io.swarm.domain.{DuplicateIDEntity, UserInfo}
 import scala.slick.driver.JdbcProfile
 import java.sql.SQLIntegrityConstraintViolationException
 import io.swarm.management.dao.ManagementDao
+import scala.slick.jdbc.JdbcBackend
 
 
 class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   import profile.simple._
-  import Database.dynamicSession
 
+  type Session = JdbcBackend.Session
   implicit val uuidColumnType = MappedColumnType.base[UUID, String](_.toString, UUID.fromString(_))
 
   trait HasID {
@@ -399,11 +400,11 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     Compiled(query _)
   }
 
-  def create {
+  def create(implicit session: Session) {
     (organizations.ddl ++ domains.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).create
   }
 
-  def drop {
+  def drop(implicit session: Session) {
     (organizations.ddl ++ domains.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).drop
   }
 
@@ -415,7 +416,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   }
 
 
-  def saveAdminUserRef(admin: Management.AdminUserRef) = {
+  def saveAdminUserRef(admin: Management.AdminUserRef)(implicit session: Session) = {
     try {
       adminUsers.insert(admin)
     } catch {
@@ -424,22 +425,22 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     admin
   }
 
-  def updateAdminUserRef(admin: Management.AdminUserRef) = {
+  def updateAdminUserRef(admin: Management.AdminUserRef)(implicit session: Session) = {
     AdminUserQueries.adminRefByID(admin.id).update(admin)
     admin
   }
 
-  def updateDeviceRef(ref: DeviceRef): DeviceRef = {
+  def updateDeviceRef(ref: DeviceRef)(implicit session: Session): DeviceRef = {
     DeviceQueries.byID(ref.id).update(ref)
     ref
   }
 
-  def updateUserRef(ref: UserRef): UserRef = {
+  def updateUserRef(ref: UserRef)(implicit session: Session): UserRef = {
     UserQueries.userRefByID(ref.id).update(ref)
     ref
   }
 
-  def saveDeviceRef(ref: DeviceRef): DeviceRef = {
+  def saveDeviceRef(ref: DeviceRef)(implicit session: Session): DeviceRef = {
     try {
       devices.insert(ref)
     } catch {
@@ -448,7 +449,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     ref
   }
 
-  def saveUserRef(ref: UserRef): UserRef = {
+  def saveUserRef(ref: UserRef)(implicit session: Session): UserRef = {
     try {
       users.insert(ref)
     } catch {
@@ -457,19 +458,19 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     ref
   }
 
-  def getDeviceRef(id: UUID): Option[DeviceRef] = DeviceQueries.byID(id).firstOption
+  def getDeviceRef(id: UUID)(implicit session: Session): Option[DeviceRef] = DeviceQueries.byID(id).firstOption
 
-  def getDeviceRefByDeviceID(deviceID: String): Option[DeviceRef] = DeviceQueries.byDeviceID(deviceID).firstOption
+  def getDeviceRefByDeviceID(deviceID: String)(implicit session: Session): Option[DeviceRef] = DeviceQueries.byDeviceID(deviceID).firstOption
 
-  def getUserRef(id: UUID): Option[UserRef] = UserQueries.userRefByID(id).firstOption
+  def getUserRef(id: UUID)(implicit session: Session): Option[UserRef] = UserQueries.userRefByID(id).firstOption
 
-  def getUserRefByUsername(username: String): Option[UserRef] = UserQueries.userRefByUsername(username).firstOption
+  def getUserRefByUsername(username: String)(implicit session: Session): Option[UserRef] = UserQueries.userRefByUsername(username).firstOption
 
-  def getUserRefByEmail(email: String): Option[UserRef] = UserQueries.userRefByEmail(email).firstOption
+  def getUserRefByEmail(email: String)(implicit session: Session): Option[UserRef] = UserQueries.userRefByEmail(email).firstOption
 
-  def associateAdmin(orgID: UUID, adminID: UUID): Unit = organizationAdmins.insert((orgID, adminID))
+  def associateAdmin(orgID: UUID, adminID: UUID)(implicit session: Session): Unit = organizationAdmins.insert((orgID, adminID))
 
-  def saveOrganizationRef(org: OrganizationRef): OrganizationRef = {
+  def saveOrganizationRef(org: OrganizationRef)(implicit session: Session): OrganizationRef = {
     try {
       organizations.insert(org)
     } catch {
@@ -478,21 +479,21 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     org
   }
 
-  def getOrganizationRef(id: UUID): Option[OrganizationRef] = OrganizationQueries.byID(id).firstOption
+  def getOrganizationRef(id: UUID)(implicit session: Session): Option[OrganizationRef] = OrganizationQueries.byID(id).firstOption
 
-  def getOrganization(id: UUID): Option[Management.Organization] = OrganizationQueries.byIDWithDomains(id).list.toTuple.map {
+  def getOrganization(id: UUID)(implicit session: Session): Option[Management.Organization] = OrganizationQueries.byIDWithDomains(id).list.toTuple.map {
     x =>
       x._1.toOrganization(x._2, x._3)
   }
 
 
-  def getOrganizationRefByName(name: String): Option[OrganizationRef] = OrganizationQueries.byName(name).firstOption
+  def getOrganizationRefByName(name: String)(implicit session: Session): Option[OrganizationRef] = OrganizationQueries.byName(name).firstOption
 
-  def removeDomain(id: UUID): Unit = DomainQueries.byID(id).delete
+  def removeDomain(id: UUID)(implicit session: Session): Unit = DomainQueries.byID(id).delete
 
-  def getDomainCount(orgID: UUID): Int = OrganizationQueries.countDomains(orgID).run
+  def getDomainCount(orgID: UUID)(implicit session: Session): Int = OrganizationQueries.countDomains(orgID).run
 
-  def saveDomain(domain: DomainRef, orgID: UUID): DomainRef = {
+  def saveDomain(domain: DomainRef, orgID: UUID)(implicit session: Session): DomainRef = {
     try {
       domains.insert((domain.id, domain.name, orgID))
     } catch {
@@ -501,56 +502,56 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     domain
   }
 
-  def getAdminUserRef(id: UUID): Option[AdminUserRef] = AdminUserQueries.adminRefByID(id).firstOption
+  def getAdminUserRef(id: UUID)(implicit session: Session): Option[AdminUserRef] = AdminUserQueries.adminRefByID(id).firstOption
 
-  def getAdminUserRefByEmail(email: String): Option[AdminUserRef] = AdminUserQueries.adminRefByEmail(email).firstOption
+  def getAdminUserRefByEmail(email: String)(implicit session: Session): Option[AdminUserRef] = AdminUserQueries.adminRefByEmail(email).firstOption
 
-  def getAdminUserRefByUsername(username: String): Option[AdminUserRef] = AdminUserQueries.adminRefByUsername(username).firstOption
+  def getAdminUserRefByUsername(username: String)(implicit session: Session): Option[AdminUserRef] = AdminUserQueries.adminRefByUsername(username).firstOption
 
-  def getDevice(id: UUID): Option[Management.Device] = DeviceQueries.byIDWithPerms(id).list.toTuple.map {
+  def getDevice(id: UUID)(implicit session: Session): Option[Management.Device] = DeviceQueries.byIDWithPerms(id).list.toTuple.map {
     t =>
       t._1.toDevice(t._2)
   }
 
-  def updateOrganizationRef(org: OrganizationRef): OrganizationRef = {
+  def updateOrganizationRef(org: OrganizationRef)(implicit session: Session): OrganizationRef = {
     OrganizationQueries.byID(org.id).update(org)
     org
   }
 
-  def updateDomain(domain: DomainRef, orgID: UUID): DomainRef = {
+  def updateDomain(domain: DomainRef, orgID: UUID)(implicit session: Session): DomainRef = {
     OrganizationQueries.domainRefByID(domain.id).update((domain.id, domain.name, orgID))
     domain
   }
 
-  def dropACLEntry(clientID: UUID, aclEntry: ACLEntry): Unit = clientACLByALL(clientID, aclEntry.serviceName, aclEntry.action, aclEntry.serviceTenantID, aclEntry.extensions.mkString(","))
+  def dropACLEntry(clientID: UUID, aclEntry: ACLEntry)(implicit session: Session): Unit = clientACLByALL(clientID, aclEntry.serviceName, aclEntry.action, aclEntry.serviceTenantID, aclEntry.extensions.mkString(","))
 
-  def saveACL(clientID: UUID, aclEntry: ACLEntry): Unit = clientPermissions.insert((clientID, aclEntry.serviceName, aclEntry.action, aclEntry.serviceTenantID, aclEntry.extensions.mkString(",")))
+  def saveACL(clientID: UUID, aclEntry: ACLEntry)(implicit session: Session): Unit = clientPermissions.insert((clientID, aclEntry.serviceName, aclEntry.action, aclEntry.serviceTenantID, aclEntry.extensions.mkString(",")))
 
-  def dropServiceACLS(clientID: UUID, serviceName: String): Unit = clientACLByClientIDAndServiceNameQuery(clientID, serviceName).delete
+  def dropServiceACLS(clientID: UUID, serviceName: String)(implicit session: Session): Unit = clientACLByClientIDAndServiceNameQuery(clientID, serviceName).delete
 
   implicit def userTuple2User(userTuple: Option[(Management.UserRef, Set[Management.ACLEntry])]) = userTuple.map {
     tuple =>
       tuple._1.toUser(tuple._2)
   }
 
-  def getUserByEmail(email: String): Option[User] = UserQueries.userByEmail(email).list.toUser
+  def getUserByEmail(email: String)(implicit session: Session): Option[User] = UserQueries.userByEmail(email).list.toUser
 
-  def getUserByUsername(username: String): Option[User] = UserQueries.userByUsername(username).list.toUser
+  def getUserByUsername(username: String)(implicit session: Session): Option[User] = UserQueries.userByUsername(username).list.toUser
 
-  def getUser(id: UUID): Option[User] = UserQueries.userByID(id).list.toUser
+  def getUser(id: UUID)(implicit session: Session): Option[User] = UserQueries.userByID(id).list.toUser
 
   implicit def adminTuple2Admin(adminTuple: Option[(Management.AdminUserRef, Set[Management.OrganizationRef])]) = adminTuple.map {
     tuple =>
       tuple._1.toAdminUser(tuple._2)
   }
 
-  def getAdminUserByUsername(username: String): Option[AdminUser] = AdminUserQueries.adminByUsername(username).list.toAdminUser
+  def getAdminUserByUsername(username: String)(implicit session: Session): Option[AdminUser] = AdminUserQueries.adminByUsername(username).list.toAdminUser
 
-  def getAdminUserByEmail(email: String): Option[AdminUser] = AdminUserQueries.adminByEmail(email).list.toAdminUser
+  def getAdminUserByEmail(email: String)(implicit session: Session): Option[AdminUser] = AdminUserQueries.adminByEmail(email).list.toAdminUser
 
-  def getAdminUser(uuid: UUID): Option[AdminUser] = AdminUserQueries.adminByID(uuid).list.toAdminUser
+  def getAdminUser(uuid: UUID)(implicit session: Session): Option[AdminUser] = AdminUserQueries.adminByID(uuid).list.toAdminUser
 
-  def getDomain(id: UUID): Option[Domain] = OrganizationQueries.domainByID(id).firstOption.map {
+  def getDomain(id: UUID)(implicit session: Session): Option[Domain] = OrganizationQueries.domainByID(id).firstOption.map {
     t =>
       Domain(t._1._1, t._1._2, t._2)
   }

@@ -43,215 +43,246 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   }
 
   override def beforeAll(configMap: ConfigMap) {
-    db withDynSession {
-      managementDao.create
-      organizations.foreach(managementDao.saveOrganizationRef)
-      devices.foreach(managementDao.saveDeviceRef)
-      admins.foreach(managementDao.saveAdminUserRef)
-      managementDao.associateAdmin(organizations.head.id, admins.head.id)
-      users.foreach(managementDao.saveUserRef)
-      domains.foreach(managementDao.saveDomain(_, organizations.head.id))
-      acls.foreach(p => managementDao.saveACL(devices.head.id, p))
-      acls.foreach(p => managementDao.saveACL(users.head.id, p))
+    db withSession {
+      implicit session =>
+        managementDao.create
+        organizations.foreach(managementDao.saveOrganizationRef)
+        devices.foreach(managementDao.saveDeviceRef)
+        admins.foreach(managementDao.saveAdminUserRef)
+        managementDao.associateAdmin(organizations.head.id, admins.head.id)
+        users.foreach(managementDao.saveUserRef)
+        domains.foreach(managementDao.saveDomain(_, organizations.head.id))
+        acls.foreach(p => managementDao.saveACL(devices.head.id, p))
+        acls.foreach(p => managementDao.saveACL(users.head.id, p))
     }
   }
 
   override def afterAll(configMap: ConfigMap) {
-    db withDynSession {
-
-      managementDao.drop
+    db withSession {
+      implicit session =>
+        managementDao.drop
     }
   }
 
   it should "get organization by id" in {
-    db withDynSession {
-      managementDao.getOrganizationRef(organizations.head.id) should be(Some(organizations.head))
-      managementDao.getOrganizationRef(UUIDGenerator.randomGenerator.generate()) should be(None)
+    db withSession {
+      implicit session =>
+        managementDao.getOrganizationRef(organizations.head.id) should be(Some(organizations.head))
+        managementDao.getOrganizationRef(UUIDGenerator.randomGenerator.generate()) should be(None)
     }
   }
 
   it should "throw DuplicateIDEntity for duplicate organizations" in {
     intercept[DuplicateIDEntity] {
-      db withDynSession {
-        managementDao.saveOrganizationRef(organizations.head)
+      db withSession {
+        implicit session =>
+          managementDao.saveOrganizationRef(organizations.head)
       }
     }
   }
 
   it should "get organization with domains" in {
-    db.withDynSession {
-      val org = managementDao.getOrganization(organizations.head.id)
-      org should be(Some(organizations.head.toOrganization(domains.toSet, Set(admins.head))))
+    db withSession {
+      implicit session =>
+        val org = managementDao.getOrganization(organizations.head.id)
+        org should be(Some(organizations.head.toOrganization(domains.toSet, Set(admins.head))))
     }
   }
 
   it should "get organization with out domains" in {
-    db.withDynSession {
-      val org = managementDao.getOrganization(organizations.last.id)
-      org should be(Some((organizations.last.toOrganization(Set(), Set()))))
+    db withSession {
+      implicit session =>
+        val org = managementDao.getOrganization(organizations.last.id)
+        org should be(Some((organizations.last.toOrganization(Set(), Set()))))
     }
   }
 
   it should "get device by id " in {
-    db withDynSession {
-      managementDao.getDeviceRef(devices.head.id) should be(Some(devices.head))
+    db withSession {
+      implicit session =>
+        managementDao.getDeviceRef(devices.head.id) should be(Some(devices.head))
     }
   }
 
   it should "get device by id with perms" in {
-    db withDynSession {
-      managementDao.getDevice(devices.head.id) should be(Some(devices.head.toDevice(acls)))
+    db withSession {
+      implicit session =>
+        managementDao.getDevice(devices.head.id) should be(Some(devices.head.toDevice(acls)))
     }
   }
 
   it should "get device withoutperm by id " in {
-    db withDynSession {
-      managementDao.getDevice(devices.last.id) should be(Some(devices.last.toDevice(Set())))
+    db withSession {
+      implicit session =>
+        managementDao.getDevice(devices.last.id) should be(Some(devices.last.toDevice(Set())))
     }
   }
 
   it should "get device by deviceId " in {
-    db withDynSession {
-      managementDao.getDeviceRefByDeviceID(devices.head.deviceID) should be(Some(devices.head))
+    db withSession {
+      implicit session =>
+        managementDao.getDeviceRefByDeviceID(devices.head.deviceID) should be(Some(devices.head))
     }
   }
 
 
   it should "throw DuplicateIDEntity for duplicate devices" in {
     intercept[DuplicateIDEntity] {
-      db withDynSession {
-        managementDao.saveDeviceRef(devices.head)
+      db withSession {
+        implicit session =>
+          managementDao.saveDeviceRef(devices.head)
       }
     }
   }
 
   it should "update device by id " in {
-    db withDynSession {
-      val dev = devices.head.copy(activated = false, disabled = true, deviceID = "new deviceID")
-      Some(managementDao.updateDeviceRef(dev)) should be(managementDao.getDeviceRef(dev.id))
+    db withSession {
+      implicit session =>
+        val dev = devices.head.copy(activated = false, disabled = true, deviceID = "new deviceID")
+        Some(managementDao.updateDeviceRef(dev)) should be(managementDao.getDeviceRef(dev.id))
     }
   }
 
   it should "get adminref by id" in {
-    db withDynSession {
-      managementDao.getAdminUserRef(admins.head.id) should be(Some(admins.head))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUserRef(admins.head.id) should be(Some(admins.head))
     }
   }
 
   it should "get adminref by email" in {
-    db withDynSession {
-      managementDao.getAdminUserRefByEmail(admins.head.email) should be(Some(admins.head))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUserRefByEmail(admins.head.email) should be(Some(admins.head))
     }
   }
 
   it should "get adminref by username" in {
-    db withDynSession {
-      managementDao.getAdminUserRefByUsername(admins.head.username) should be(Some(admins.head))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUserRefByUsername(admins.head.username) should be(Some(admins.head))
     }
   }
 
   it should "get admin by id" in {
-    db withDynSession {
-      managementDao.getAdminUser(admins.head.id) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUser(admins.head.id) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
     }
   }
 
   it should "get admin by email" in {
-    db withDynSession {
-      managementDao.getAdminUserByEmail(admins.head.email) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUserByEmail(admins.head.email) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
     }
   }
 
   it should "get admin by username" in {
-    db withDynSession {
-      managementDao.getAdminUserByUsername(admins.head.username) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUserByUsername(admins.head.username) should be(Some(admins.head.toAdminUser(Set(organizations.head))))
     }
   }
 
   it should "get adminwithoutorg by id" in {
-    db withDynSession {
-      managementDao.getAdminUser(admins.last.id) should be(Some(admins.last.toAdminUser(Set())))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUser(admins.last.id) should be(Some(admins.last.toAdminUser(Set())))
     }
   }
 
   it should "get adminwithoutorg by email" in {
-    db withDynSession {
-      managementDao.getAdminUserByEmail(admins.last.email) should be(Some(admins.last.toAdminUser(Set())))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUserByEmail(admins.last.email) should be(Some(admins.last.toAdminUser(Set())))
     }
   }
 
   it should "get adminwithoutorg by username" in {
-    db withDynSession {
-      managementDao.getAdminUserByUsername(admins.last.username) should be(Some(admins.last.toAdminUser(Set())))
+    db withSession {
+      implicit session =>
+        managementDao.getAdminUserByUsername(admins.last.username) should be(Some(admins.last.toAdminUser(Set())))
     }
   }
 
   it should "throw DuplicateIDEntity for duplicate admins" in {
     intercept[DuplicateIDEntity] {
-      db withDynSession {
-        managementDao.saveAdminUserRef(admins.head)
+      db withSession {
+        implicit session =>
+          managementDao.saveAdminUserRef(admins.head)
       }
     }
   }
 
   it should "get userref by id" in {
-    db withDynSession {
-      managementDao.getUserRef(users.head.id) should be(Some(users.head))
+    db withSession {
+      implicit session =>
+        managementDao.getUserRef(users.head.id) should be(Some(users.head))
     }
   }
 
   it should "get userref by email" in {
-    db withDynSession {
-      managementDao.getUserRefByEmail(users.head.email) should be(Some(users.head))
+    db withSession {
+      implicit session =>
+        managementDao.getUserRefByEmail(users.head.email) should be(Some(users.head))
     }
   }
 
   it should "get userref by username" in {
-    db withDynSession {
-      managementDao.getUserRefByUsername(users.head.username) should be(Some(users.head))
+    db withSession {
+      implicit session =>
+        managementDao.getUserRefByUsername(users.head.username) should be(Some(users.head))
     }
   }
 
   it should "get user by id" in {
-    db withDynSession {
-      managementDao.getUser(users.head.id) should be(Some(users.head.toUser(acls)))
+    db withSession {
+      implicit session =>
+        managementDao.getUser(users.head.id) should be(Some(users.head.toUser(acls)))
     }
   }
 
   it should "get user by email" in {
-    db withDynSession {
-      managementDao.getUserByEmail(users.head.email) should be(Some(users.head.toUser(acls)))
+    db withSession {
+      implicit session =>
+        managementDao.getUserByEmail(users.head.email) should be(Some(users.head.toUser(acls)))
     }
   }
 
   it should "get user by username" in {
-    db withDynSession {
-      managementDao.getUserByUsername(users.head.username) should be(Some(users.head.toUser(acls)))
+    db withSession {
+      implicit session =>
+        managementDao.getUserByUsername(users.head.username) should be(Some(users.head.toUser(acls)))
     }
   }
 
   it should "get userWithoutPerm by id" in {
-    db withDynSession {
-      managementDao.getUser(users.last.id) should be(Some(users.last.toUser(Set())))
+    db withSession {
+      implicit session =>
+        managementDao.getUser(users.last.id) should be(Some(users.last.toUser(Set())))
     }
   }
 
   it should "get userWithoutPerm by email" in {
-    db withDynSession {
-      managementDao.getUserByEmail(users.last.email) should be(Some(users.last.toUser(Set())))
+    db withSession {
+      implicit session =>
+        managementDao.getUserByEmail(users.last.email) should be(Some(users.last.toUser(Set())))
     }
   }
 
   it should "get userWithoutPerm by username" in {
-    db withDynSession {
-      managementDao.getUserByUsername(users.last.username) should be(Some(users.last.toUser(Set())))
+    db withSession {
+      implicit session =>
+        managementDao.getUserByUsername(users.last.username) should be(Some(users.last.toUser(Set())))
     }
   }
 
   it should "throw DuplicateIDEntity for duplicate users" in {
     intercept[DuplicateIDEntity] {
-      db withDynSession {
-        managementDao.saveUserRef(users.head)
+      db withSession {
+        implicit session =>
+          managementDao.saveUserRef(users.head)
       }
     }
   }
