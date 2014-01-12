@@ -7,7 +7,7 @@ import io.swarm.UUIDGenerator
 import io.swarm.security.HashedAlgorithm
 import scala.slick.jdbc.JdbcBackend.Database
 import io.swarm.management.Management._
-import io.swarm.management.Management.Domain
+import io.swarm.management.Management.DomainRef
 import io.swarm.management.Management.AdminUserRef
 import io.swarm.management.Management.OrganizationRef
 import io.swarm.management.Management.DeviceRef
@@ -31,7 +31,7 @@ trait HSQLInMemoryManagementDaoComponent extends ManagementDaoComponent {
 
 class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with HSQLInMemoryManagementDaoComponent {
 
-  val domains = List(Domain(UUIDGenerator.randomGenerator.generate(), "dom1"), Domain(UUIDGenerator.randomGenerator.generate(), "dom2"))
+  val domains = List(DomainRef(UUIDGenerator.randomGenerator.generate(), "dom1"), DomainRef(UUIDGenerator.randomGenerator.generate(), "dom2"))
   val organizations = List(OrganizationRef(UUIDGenerator.randomGenerator.generate(), "testorg", disabled = false), OrganizationRef(UUIDGenerator.randomGenerator.generate(), "withoutDom", disabled = false))
   val admins = List(AdminUserRef(UUIDGenerator.randomGenerator.generate(), Some("test"), Some("test"), "test", "test@test.com", HashedAlgorithm.toHex("test"), activated = true, confirmed = true, disabled = false), AdminUserRef(UUIDGenerator.randomGenerator.generate(), Some("test2"), Some("test2"), "test2", "test2@test.com", HashedAlgorithm.toHex("test"), activated = true, confirmed = true, disabled = false))
   val devices = List(DeviceRef(UUIDGenerator.randomGenerator.generate(), "device1", activated = true, disabled = false), DeviceRef(UUIDGenerator.randomGenerator.generate(), "device2", activated = true, disabled = false))

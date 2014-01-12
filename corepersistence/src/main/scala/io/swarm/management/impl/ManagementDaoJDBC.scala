@@ -7,7 +7,7 @@ import io.swarm.management.Management
 import io.swarm.management.Management._
 import io.swarm.management.Management.AdminUserRef
 import io.swarm.management.Management.OrganizationRef
-import io.swarm.management.Management.Domain
+import io.swarm.management.Management.DomainRef
 import io.swarm.domain.{DuplicateIDEntity, UserInfo}
 import scala.slick.driver.JdbcProfile
 import java.sql.SQLIntegrityConstraintViolationException
@@ -204,7 +204,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   }
 
   implicit class DomainHelper(t: (Option[UUID], Option[String])) {
-    def toDomain = t._1.map(id => Domain(id, t._2.get))
+    def toDomain = t._1.map(id => DomainRef(id, t._2.get))
   }
 
   implicit class AdminHelper(t: (Option[UUID], Option[String], Option[String], Option[String], Option[String], Option[String], Option[Boolean], Option[Boolean], Option[Boolean])) {
@@ -243,9 +243,14 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
       o <- organizations.where(_.name === name)
     } yield o
 
-    private def domainQuery(id: Column[UUID]) = for {
-      d <- domains if d.id is id
+    private def domainRefQuery(id: Column[UUID]) = for {
+      d <- domains if d.id is id isNotNull
     } yield d
+
+    private def domainQuery(id: Column[UUID]) = for {
+      (d, o) <- domains.where(_.id is id) innerJoin organizations on (_.orgID is _.id)
+    } yield (d, o)
+
 
     private def domainCount(id: Column[UUID]) = (for {d <- domains if d.orgID is id} yield d).length
 
@@ -253,6 +258,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     val byIDWithDomains = Compiled(byIDWithDomainsQuery _)
     val byName = Compiled(byNameQuery _)
     val countDomains = Compiled(domainCount _)
+    val domainRefByID = Compiled(domainRefQuery _)
     val domainByID = Compiled(domainQuery _)
   }
 
@@ -486,7 +492,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   def getDomainCount(orgID: UUID): Int = OrganizationQueries.countDomains(orgID).run
 
-  def saveDomain(domain: Domain, orgID: UUID): Domain = {
+  def saveDomain(domain: DomainRef, orgID: UUID): DomainRef = {
     try {
       domains.insert((domain.id, domain.name, orgID))
     } catch {
@@ -511,8 +517,8 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     org
   }
 
-  def updateDomain(domain: Domain, orgID: UUID): Domain = {
-    OrganizationQueries.domainByID(domain.id).update((domain.id, domain.name, orgID))
+  def updateDomain(domain: DomainRef, orgID: UUID): DomainRef = {
+    OrganizationQueries.domainRefByID(domain.id).update((domain.id, domain.name, orgID))
     domain
   }
 
@@ -544,5 +550,8 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   def getAdminUser(uuid: UUID): Option[AdminUser] = AdminUserQueries.adminByID(uuid).list.toAdminUser
 
-
+  def getDomain(id: UUID): Option[Domain] = OrganizationQueries.domainByID(id).firstOption.map {
+    t =>
+      Domain(t._1._1, t._1._2, t._2)
+  }
 }
