@@ -32,11 +32,11 @@ object Management {
     def toOrganization(domains: Set[DomainRef], admins: Set[AdminUserRef]) = Organization(id, name, disabled, domains, admins)
   }
 
-  case class Organization(id: UUID, name: String, disabled: Boolean, domains: Set[DomainRef], admins: Set[AdminUserRef]) {
+  case class Organization(id: UUID, name: String, disabled: Boolean, domains: Set[DomainRef], admins: Set[AdminUserRef]) extends DisableableResourceRef {
     def organizationRef = OrganizationRef(id, name, disabled)
   }
 
-  case class Domain(id: UUID, name: String, organization: OrganizationRef) {
+  case class Domain(id: UUID, name: String, organization: OrganizationRef) extends ResourceRef {
     def domainRef = DomainRef(id, name)
   }
 
@@ -62,6 +62,12 @@ object Management {
     def initialize(serviceName: String): UUID
 
     def drop(uuid: UUID)
+  }
+
+  trait SessionProvider {
+    type Session
+
+    def withSession[T](f: (Session => T)): T
   }
 
   trait ACLService {
