@@ -15,18 +15,24 @@ import scala.Some
 import io.swarm.management.impl.ManagementDaoJDBC
 import java.util.UUID
 import io.swarm.management.dao.ManagementDaoComponent
+import scala.slick.jdbc.JdbcBackend
 
 /**
  * Created by capacman on 10/26/13.
  */
 
-trait HSQLInMemoryManagementDaoComponent extends ManagementDaoComponent {
+trait SlickSessionProvider extends SessionProvider {
+  type Session = JdbcBackend.Session
 
+  val db: Database
+
+  def withSession[T](f: (SlickSessionProvider#Session) => T): T = db.withSession(f)
+}
+
+trait HSQLInMemoryManagementDaoComponent extends ManagementDaoComponent with SlickSessionProvider {
   val profile: JdbcProfile = HsqldbDriver
-
-  lazy val db = Database.forURL("jdbc:hsqldb:mem:mymemdb", driver = "org.hsqldb.jdbc.JDBCDriver", user = "sa", password = "sa")
-
   val managementDao = new ManagementDaoJDBC(profile)
+  lazy val db = Database.forURL("jdbc:hsqldb:mem:mymemdb", driver = "org.hsqldb.jdbc.JDBCDriver", user = "sa", password = "sa")
 }
 
 class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with HSQLInMemoryManagementDaoComponent {
@@ -43,7 +49,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   }
 
   override def beforeAll(configMap: ConfigMap) {
-    db withSession {
+    withSession {
       implicit session =>
         managementDao.create
         organizations.foreach(managementDao.saveOrganizationRef)
@@ -58,9 +64,9 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   }
 
   override def afterAll(configMap: ConfigMap) {
-    db withSession {
-      implicit session =>
-        managementDao.drop
+    withSession {
+      session =>
+        managementDao.drop(session)
     }
   }
 
