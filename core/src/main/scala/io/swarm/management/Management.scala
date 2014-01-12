@@ -29,14 +29,20 @@ object Management {
   case class ACLEntry(serviceName: String, serviceTenantID: UUID, action: String, extensions: List[String])
 
   case class OrganizationRef(id: UUID, name: String, disabled: Boolean) extends DisableableResourceRef {
-    def toOrganization(domains: Set[Domain], admins: Set[AdminUserRef]) = Organization(id, name, disabled, domains, admins)
+    def toOrganization(domains: Set[DomainRef], admins: Set[AdminUserRef]) = Organization(id, name, disabled, domains, admins)
   }
 
-  case class Organization(id: UUID, name: String, disabled: Boolean, domains: Set[Domain], admins: Set[AdminUserRef]) {
+  case class Organization(id: UUID, name: String, disabled: Boolean, domains: Set[DomainRef], admins: Set[AdminUserRef]) {
     def organizationRef = OrganizationRef(id, name, disabled)
   }
 
-  case class Domain(id: UUID, name: String) extends ResourceRef
+  case class Domain(id: UUID, name: String, organization: OrganizationRef) {
+    def domainRef = DomainRef(id, name)
+  }
+
+  case class DomainRef(id: UUID, name: String) extends ResourceRef {
+    def toDomain(orgRef: OrganizationRef) = Domain(id, name, orgRef)
+  }
 
   case class DeviceRef(id: UUID, deviceID: String, activated: Boolean, disabled: Boolean) extends Client {
     def confirmed = true
@@ -97,6 +103,8 @@ object Management {
 
     def getOrganizationByName(name: String): Option[OrganizationRef]
 
+    def getDomain(id: UUID): Option[Domain]
+
     def addAdminToOrganization(adminID: UUID, orgID: UUID)
 
     def getAdminUserRef(id: UUID): Option[AdminUserRef]
@@ -116,6 +124,8 @@ object Management {
     def updateAdminUser(adminUser: AdminUserRef): AdminUserRef
 
     def getDeviceRef(id: UUID): Option[DeviceRef]
+
+    def getDevice(id: UUID): Option[Device]
 
     def saveDeviceRef(device: DeviceRef): DeviceRef
 

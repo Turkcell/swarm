@@ -22,7 +22,7 @@ import java.util.UUID
 import io.swarm.security.AuthPrincipalType._
 import java.nio.{ByteBuffer, BufferUnderflowException}
 import io.swarm.domain.IDEntity
-import io.swarm.management.Management.{Domain, DeviceRef, OrganizationRef}
+import io.swarm.management.Management.{DomainRef, DeviceRef, OrganizationRef}
 
 /**
  * Created by Anil Chalil on 11/19/13.
@@ -64,7 +64,7 @@ object ClientID {
 
   def apply(ref: IDEntity) = ref match {
     case o: OrganizationRef => new ClientID(AuthPrincipalType.Organization.base64Prefix + o.id.base64, o.id, AuthPrincipalType.Organization)
-    case dom: Domain => new ClientID(AuthPrincipalType.Domain.base64Prefix + dom.id.base64, dom.id, AuthPrincipalType.Domain)
+    case dom: DomainRef => new ClientID(AuthPrincipalType.Domain.base64Prefix + dom.id.base64, dom.id, AuthPrincipalType.Domain)
     case d: DeviceRef => new ClientID(AuthPrincipalType.Device.base64Prefix + d.id.base64, d.id, AuthPrincipalType.Device)
     case _ => throw new IllegalArgumentException(s"could not generate clientID for $ref")
   }

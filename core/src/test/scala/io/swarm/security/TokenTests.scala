@@ -90,7 +90,7 @@ class TokenTests extends FlatSpec with ShouldMatchers {
 
   "client id " should " should construct a ClientID" in {
     val org = ClientID(OrganizationRef(UUIDGenerator.randomGenerator.generate(), "org", false))
-    val domain = Domain(UUIDGenerator.randomGenerator.generate(), "db")
+    val domain = DomainRef(UUIDGenerator.randomGenerator.generate(), "db")
     val db = ClientID(domain)
     val dev = ClientID(DeviceRef(UUIDGenerator.randomGenerator.generate(), "device", true, false))
 

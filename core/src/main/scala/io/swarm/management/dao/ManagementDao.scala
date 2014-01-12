@@ -12,7 +12,9 @@ trait ManagementDaoComponent {
 }
 
 trait ManagementDao {
-  def updateDomain(domain: Domain, orgID: UUID): Domain
+  def getDomain(id: UUID): Option[Domain]
+
+  def updateDomain(domain: DomainRef, orgID: UUID): DomainRef
 
   def saveACL(clientID: UUID, aclEntry: ACLEntry): Unit
 
@@ -62,7 +64,7 @@ trait ManagementDao {
 
   def getDomainCount(orgID: UUID): Int
 
-  def saveDomain(domain: Domain, orgID: UUID): Domain
+  def saveDomain(domain: DomainRef, orgID: UUID): DomainRef
 
   def getAdminUserRef(uuid: UUID): Option[AdminUserRef]
 
@@ -167,6 +169,10 @@ trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent
     def getAdminUserByEmail(email: String): Option[AdminUser] = managementDao.getAdminUserByEmail(email)
 
     def getAdminUser(id: UUID): Option[AdminUser] = managementDao.getAdminUser(id)
+
+    def getDevice(id: UUID): Option[Device] = managementDao.getDevice(id)
+
+    def getDomain(id: UUID): Option[Domain] = managementDao.getDomain(id)
   }
 
 }
