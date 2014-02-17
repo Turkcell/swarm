@@ -31,15 +31,15 @@ class CustomPermission(permission: String) extends WildcardPermission(permission
       false
     } else {
       val otherParts = p.asInstanceOf[CustomPermission].getParts.asScala
-      val isDB = if (otherParts.isEmpty) false else otherParts(0).contains("databases")
+      val isService = if (otherParts.isEmpty) false else !(otherParts(0).contains("domains") || otherParts(0).contains("organizations"))
       otherParts.zipWithIndex.collectFirst {
         case (otherPart, i) if i > (getParts.size - 1) => true
-        case (otherPart, i) if isDB && i > 2 => otherPart.containsAll(getParts.get(i))
+        case (otherPart, i) if isService && i > 2 => otherPart.containsAll(getParts.get(i))
         case (otherPart, i) if !getParts.get(i).contains(WildcardPermission.WILDCARD_TOKEN) && !getParts.get(i).containsAll(otherPart) => false
       } getOrElse {
         getParts.asScala.takeRight(getParts.size - otherParts.size).zipWithIndex.forall {
           case (part, i) =>
-            if (isDB && (i + otherParts.size) > 2) {
+            if (isService && (i + otherParts.size) > 2) {
               part.isEmpty
             } else {
               part.contains(WildcardPermission.WILDCARD_TOKEN)

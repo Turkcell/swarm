@@ -1,4 +1,4 @@
-package io.swarm.tsdb.domain
+package io.swarm.tsdb.metadata
 
 import java.util.UUID
 import io.swarm.domain.{IDEntity, ResourceRef}
@@ -31,8 +31,6 @@ trait DatabaseRepositoryComponent {
     def saveDatabase(database: Database, domainID: UUID): Database
 
     def getDatabaseInfo(id: UUID): Option[DatabaseInfo]
-
-    def getDatabaseInfoAsync(id: UUID)(implicit execctx: ExecutionContext): Future[Option[DatabaseInfo]] = future(persistenceSession.withSession(getDatabaseInfo(id)))
 
     def getDatabaseByName(dbName: String, orgID: UUID): Option[Database]
 

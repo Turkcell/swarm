@@ -88,6 +88,18 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   val domains = TableQuery[Domains]
 
+  class DomainServiceTenants(tag: Tag) extends Table[(UUID, String, UUID)](tag, "DOMAIN_SERVICETENANTS") with HasID {
+    def serviceID = column[String]("SERVICE_ID")
+
+    def domainID = column[UUID]("DOM_ID")
+
+    def * = (id, serviceID, domainID)
+
+    def dom_fk = foreignKey("servicetenants_domain_fk", domainID, domains)(_.id)
+  }
+
+  val serviceTenants = TableQuery[DomainServiceTenants]
+
   implicit class DevicesExtensions(val q: Query[Devices, Management.DeviceRef]) {
     def withPermissions = q leftJoin clientPermissions on (_.id is _.clientID)
   }
@@ -204,6 +216,17 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
       }.flatten.toSet))
   }
 
+  implicit class DomainWithOrgHelper(seq: Seq[((UUID, String, UUID), Management.OrganizationRef, (Option[UUID], Option[String]))]) {
+    def toDomain(reg: ServiceProviderRegistry) = {
+      if (seq.isEmpty)
+        None
+      else Some((seq.head._1, seq.head._2, seq.map {
+        i =>
+          i._3._1.map(id => reg.serviceMeta(i._3._2.get).map(serviceMeta => ServiceTenant(id, serviceMeta))).flatten
+      }.flatten.toSet))
+    }
+  }
+
   implicit class DomainHelper(t: (Option[UUID], Option[String])) {
     def toDomain = t._1.map(id => DomainRef(id, t._2.get))
   }
@@ -249,8 +272,8 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     } yield d
 
     private def domainQuery(id: Column[UUID]) = for {
-      (d, o) <- domains.where(_.id is id) innerJoin organizations on (_.orgID is _.id)
-    } yield (d, o)
+      ((d, o), s) <- domains.where(_.id is id) innerJoin organizations on (_.orgID is _.id) leftJoin serviceTenants on (_._1.id is _.domainID)
+    } yield (d, o, (s.id.?, s.serviceID.?))
 
 
     private def domainCount(id: Column[UUID]) = (for {d <- domains if d.orgID is id} yield d).length
@@ -551,8 +574,11 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
 
   def getAdminUser(uuid: UUID)(implicit session: Session): Option[AdminUser] = AdminUserQueries.adminByID(uuid).list.toAdminUser
 
-  def getDomain(id: UUID)(implicit session: Session): Option[Domain] = OrganizationQueries.domainByID(id).firstOption.map {
-    t =>
-      Domain(t._1._1, t._1._2, t._2)
+  def getDomain(id: UUID, reg: ServiceProviderRegistry)(implicit session: Session): Option[Domain] = {
+    OrganizationQueries.domainByID(id).run.toDomain(reg).map {
+      t =>
+        Domain(t._1._1, t._1._2, t._2, t._3)
+    }
+
   }
 }

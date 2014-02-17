@@ -25,10 +25,10 @@ import io.swarm.security.{TokenInfo, TokenCategory, AuthPrincipalType}
 import io.swarm.domain.{AdminUser, UserInfo, Client}
 import scala.collection.JavaConverters._
 import com.github.nscala_time.time.Imports._
-import io.swarm.domain.persistence.slick.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
 import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
+import io.swarm.management.impl.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
 
-class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with SlickPersistenceSessionComponent {
+class AdminUserRealmTests extends FlatSpec with ShouldMatchers with AdminUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors with HSQLInMemoryManagementResourceDaoComponent with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with SlickPersistenceSessionComponent {
   val realm = AdminUserRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)

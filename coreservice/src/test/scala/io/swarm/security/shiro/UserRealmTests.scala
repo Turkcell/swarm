@@ -30,15 +30,15 @@ import io.swarm.domain.DatabaseUser
 import io.swarm.domain.UserInfo
 import io.swarm.domain.Client
 import com.github.nscala_time.time.Imports._
-import io.swarm.domain.persistence.slick.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
 import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
+import io.swarm.management.impl.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
 
 /**
  * Created by Anil Chalil on 11/15/13.
  */
 @RunWith(classOf[JUnitRunner])
-class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseUserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with SlickPersistenceSessionComponent {
-  val realm = DatabaseUserRealm
+class UserRealmTests extends FlatSpec with ShouldMatchers with UserRealmComponent with InMemoryComponents with RealmTestsBase with UserRealmBehaviors with HSQLInMemoryManagementResourceDaoComponent with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with SlickPersistenceSessionComponent {
+  val realm = UserRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
@@ -47,12 +47,12 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
   val userPass = "test"
   clientRepository.saveDatabaseUser(user)
   val validToken = {
-    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 0.toDuration, 0)
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.User, user.id), 0.toDuration, 0)
     tokenRepository.putTokenInfo(tokenInfo)
     OauthBearerToken(tokenInfo)
   }
   val expiredToken = {
-    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.DatabaseUser, user.id), 100.toDuration, 0)
+    val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.User, user.id), 100.toDuration, 0)
     tokenRepository.putTokenInfo(tokenInfo)
     OauthBearerToken(tokenInfo)
   }
@@ -69,8 +69,8 @@ class DatabaseUserRealmTests extends FlatSpec with ShouldMatchers with DatabaseU
     clientRepository.updateDatabaseUser(user.asInstanceOf[DatabaseUser])
   }
 
-  "DatabaseUser" should behave like basic(new UsernamePasswordToken(user.username, "test", AuthPrincipalType.DatabaseUser), new UsernamePasswordToken(user.username, "wrong", AuthPrincipalType.DatabaseUser), new UsernamePasswordToken("wrıng", "wrong", AuthPrincipalType.DatabaseUser), validToken, expiredToken)
+  "DatabaseUser" should behave like basic(new UsernamePasswordToken(user.username, "test", AuthPrincipalType.User), new UsernamePasswordToken(user.username, "wrong", AuthPrincipalType.User), new UsernamePasswordToken("wrıng", "wrong", AuthPrincipalType.User), validToken, expiredToken)
   "DatabaseUser" should behave like client(user, validToken)
-  "DatabaseUser" should behave like user(user, userPass, AuthPrincipalType.DatabaseUser)
+  "DatabaseUser" should behave like user(user, userPass, AuthPrincipalType.User)
 
 }

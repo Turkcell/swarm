@@ -25,13 +25,13 @@ import io.swarm.security._
 import io.swarm.domain.Organization
 import scala.collection.JavaConverters._
 import com.github.nscala_time.time.Imports._
-import io.swarm.domain.persistence.slick.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
 import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
+import io.swarm.management.impl.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
 
 /**
  * Created by Anil Chalil on 11/19/13.
  */
-class OrganizationRealmTests extends FlatSpec with ShouldMatchers with OrganizationRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with SlickPersistenceSessionComponent {
+class OrganizationRealmTests extends FlatSpec with ShouldMatchers with OrganizationRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryManagementResourceDaoComponent with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with SlickPersistenceSessionComponent {
   val realm = OrganizationRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)

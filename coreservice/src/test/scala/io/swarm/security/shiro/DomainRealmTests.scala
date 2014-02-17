@@ -26,11 +26,11 @@ import scala.collection.JavaConverters._
 import com.github.nscala_time.time.Imports._
 import io.swarm.domain
 import io.swarm.domain.DatabaseMetadata
-import io.swarm.domain.persistence.slick.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
 import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
+import io.swarm.management.impl.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
 
 
-class DatabaseRealmTests extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with DatabaseRealmComponent with InMemoryComponents with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryClientResourceDaoComponent with SlickPersistenceSessionComponent {
+class DomainRealmTests extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with DomainRealmComponent with InMemoryComponents with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryManagementResourceDaoComponent with SlickPersistenceSessionComponent {
   val realm = DatabaseRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
@@ -38,7 +38,7 @@ class DatabaseRealmTests extends FlatSpec with ShouldMatchers with BeforeAndAfte
   SecurityUtils.setSecurityManager(sec)
 
   val databaseNonExist = domain.Database(UUIDGenerator.randomGenerator.generate(), "nonExist", DatabaseMetadata(3600 * 1000 * 24), 0)
-  val secret = ClientSecret(AuthPrincipalType.Database)
+  val secret = ClientSecret(AuthPrincipalType.Domain)
   var validToken: OauthBearerToken = null
   var expiredToken: OauthBearerToken = null
   db.withDynSession {
@@ -49,16 +49,16 @@ class DatabaseRealmTests extends FlatSpec with ShouldMatchers with BeforeAndAfte
 
     tokenRepository.saveClientSecret(ClientID(TestData.database), secret)
     validToken = {
-      val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Database, TestData.database.id), 0.toDuration, 0)
+      val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Domain, TestData.database.id), 0.toDuration, 0)
       tokenRepository.putTokenInfo(tokenInfo)
       OauthBearerToken(tokenInfo)
     }
     expiredToken = {
-      val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Database, TestData.database.id), 100.toDuration, 0)
+      val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Domain, TestData.database.id), 100.toDuration, 0)
       tokenRepository.putTokenInfo(tokenInfo)
       OauthBearerToken(tokenInfo)
     }
   }
 
-  "Database" should behave like basic(ClientIDSecretToken(ClientID(TestData.database), secret), ClientIDSecretToken(ClientID(TestData.database), ClientSecret(AuthPrincipalType.Database)), ClientIDSecretToken(ClientID(databaseNonExist), ClientSecret(AuthPrincipalType.Database)), validToken, expiredToken)
+  "Database" should behave like basic(ClientIDSecretToken(ClientID(TestData.database), secret), ClientIDSecretToken(ClientID(TestData.database), ClientSecret(AuthPrincipalType.Domain)), ClientIDSecretToken(ClientID(databaseNonExist), ClientSecret(AuthPrincipalType.Domain)), validToken, expiredToken)
 }

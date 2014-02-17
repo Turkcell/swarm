@@ -18,6 +18,7 @@ package io.swarm.security.shiro
 
 import io.swarm.domain
 import org.apache.shiro.authz.Permission
+import io.swarm.management.Management.{DomainRef, OrganizationRef}
 
 /**
  * Created by Anil Chalil on 11/19/13.
@@ -29,20 +30,20 @@ object Permissions {
 
   def apply(permissions: Set[String]): Set[Permission] = permissions.map(new CustomPermission(_))
 
-  def apply(orgRefs: domain.OrganizationRef*) = {
+  def apply(orgRefs: OrganizationRef*) = {
     new CustomPermission(s"organizations:admin,access,get,put,post,delete:${orgRefs.map(_.id).mkString(",")}")
   }
 
-  def apply[O <: domain.OrganizationRef](orgRefs: Set[O]) = {
-    new CustomPermission(s"organizations:admin,access,get,put,post,delete:${orgRefs.map(_.id).mkString(",")}")
+  def apply[O <: OrganizationRef](orgRefs: Set[O]) = {
+    new CustomPermission(s"domains:admin,access,get,put,post,delete:${orgRefs.map(_.id).mkString(",")}")
   }
 
-  def forDatabases(dbRefs: domain.DatabaseRef*) = {
-    new CustomPermission(s"databases:admin,access,get,put,post,delete:${dbRefs.map(_.id).mkString(",")}")
+  def forDomains(domains: DomainRef*) = {
+    new CustomPermission(s"domains:admin,access,get,put,post,delete:${domains.map(_.id).mkString(",")}")
   }
 
-  def forDatabases[D <: domain.DatabaseRef](dbRefs: Set[D]) = {
-    new CustomPermission(s"databases:admin,access,get,put,post,delete:${dbRefs.map(_.id).mkString(",")}")
+  def forDomains(domains: Set[DomainRef]) = {
+    new CustomPermission(s"domains:admin,access,get,put,post,delete:${domains.map(_.id).mkString(",")}")
   }
 
   def isValidRights(vals: Iterable[String]) = vals.forall(allRights.contains(_))

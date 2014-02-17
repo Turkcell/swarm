@@ -40,14 +40,14 @@ trait ManagementServiceComponent {
       Database(UUIDGenerator.randomGenerator.generate(), "sandbox", DatabaseMetadata(Config.defaultDBOauthTTL), 0)
     }
 
-    def createOrganizationWithAdmin(organizationName: String, name: Option[String], surname: Option[String], username: String, email: String, password: String): (Organization, UserInfo) = isAnonymous {
+    def createOrganizationWithAdmin(organizationName: String, name: Option[String], surname: Option[String], username: String, email: String, password: String): (OrganizationRef, UserInfo) = isAnonymous {
       require(username != null && !username.isEmpty, "username could not be empty or null")
       require(email != null && isValidEmail(email), "email should be correct!")
       persistenceSession withTransaction {
         val org = if (Config.enableSandBoxDB)
-          resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set(createSandBoxDB()), 0))
+          resourceRepository.saveOrganization(OrganizationRef(UUIDGenerator.randomGenerator.generate(), organizationName, Set(createSandBoxDB()), 0))
         else
-          resourceRepository.saveOrganization(Organization(UUIDGenerator.randomGenerator.generate(), organizationName, Set(), 0))
+          resourceRepository.saveOrganization(OrganizationRef(UUIDGenerator.randomGenerator.generate(), organizationName, Set(), 0))
         val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), name, surname, username, email, HashedAlgorithm.toHex(password), activated = !Config.adminUsersRequireActivation, confirmed = !Config.adminUsersRequireConfirmation, disabled = false, Set(org), 0)
         clientRepository.saveAdminUser(admin)
         //TODO should trigger admin flow

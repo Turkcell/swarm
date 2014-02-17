@@ -12,6 +12,8 @@ lazy val cassandrapersistence = project.dependsOn(core)
 
 lazy val corepersistence = project.dependsOn(core)
 
+lazy val tsdbmetadatapersistence=project.dependsOn(tsdb,corepersistence)
+
 lazy val coreservice = project.dependsOn(core,corepersistence)
 
 lazy val rest = project.dependsOn(core,coreservice,cassandrapersistence).settings( webSettings :_*)
@@ -19,5 +21,5 @@ lazy val rest = project.dependsOn(core,coreservice,cassandrapersistence).setting
 libraryDependencies in ThisBuild ++= Seq(
     "com.github.nscala-time" %% "nscala-time" % "0.6.0",
     "org.scalatest" %% "scalatest" % "2.0" % "test",
-    "junit" % "junit" % "4.11" % "test"
+    "ch.qos.logback" % "logback-classic" % "1.0.11" % "runtime"
     )

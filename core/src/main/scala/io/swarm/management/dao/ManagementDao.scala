@@ -14,7 +14,7 @@ trait ManagementDaoComponent {
 trait ManagementDao {
   type Session
 
-  def getDomain(id: UUID)(implicit session: Session): Option[Domain]
+  def getDomain(id: UUID, reg: ServiceProviderRegistry)(implicit session: Session): Option[Domain]
 
   def updateDomain(domain: DomainRef, orgID: UUID)(implicit session: Session): DomainRef
 
@@ -86,7 +86,7 @@ trait ManagementDao {
 }
 
 trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent {
-  this: ManagementDaoComponent =>
+  this: ManagementDaoComponent with ServiceProviderRegistryComponent =>
   val resourceRepository: OrganizationRepository = new OrganizationRepository {
     type Session = managementDao.Session
 
@@ -175,14 +175,14 @@ trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent
 
     def getDevice(id: UUID)(implicit session: this.type#Session): Option[Device] = managementDao.getDevice(id)
 
-    def getDomain(id: UUID)(implicit session: this.type#Session): Option[Domain] = managementDao.getDomain(id)
+    def getDomain(id: UUID)(implicit session: this.type#Session): Option[Domain] = managementDao.getDomain(id, registry)
   }
 
 }
 
-trait ClientRepositoryDaoComponent extends ClientRepositoryComponent {
+trait UserRepositoryDaoComponent extends UserRepositoryComponent {
   this: ManagementDaoComponent =>
-  val clientRepository: ClientRepository = new ClientRepository {
+  val userRepository: UserRepository = new UserRepository {
     type Session = managementDao.Session
 
     def getUserRefByEmail(email: String)(implicit session: this.type#Session): Option[UserRef] = managementDao.getUserRefByEmail(email)
