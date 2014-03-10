@@ -3,7 +3,7 @@ package io.swarm.management.dao
 import java.util.UUID
 import io.swarm.domain.{IDEntityNotFound, UserInfo}
 import io.swarm.management.Management._
-
+import scala.slick.jdbc.JdbcBackend.Session
 /**
  * Created by Anil Chalil on 1/9/14.
  */
@@ -12,7 +12,6 @@ trait ManagementDaoComponent {
 }
 
 trait ManagementDao {
-  type Session
 
   def getDomain(id: UUID, reg: ServiceProviderRegistry)(implicit session: Session): Option[Domain]
 
@@ -87,17 +86,16 @@ trait ManagementDao {
 
 trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent {
   this: ManagementDaoComponent with ServiceProviderRegistryComponent =>
-  val resourceRepository: OrganizationRepository = new OrganizationRepository {
-    type Session = managementDao.Session
+  val organizationRepository: OrganizationRepository = new OrganizationRepository {
 
-    def saveOrganization(org: Organization)(implicit session: this.type#Session): Organization = {
+    def saveOrganization(org: Organization)(implicit session: Session): Organization = {
       managementDao.saveOrganizationRef(org.organizationRef)
       org.domains.foreach(managementDao.saveDomain(_, org.id))
       org.admins.foreach(a => managementDao.associateAdmin(org.id, a.id))
       org
     }
 
-    def updateOrganization(id: UUID, f: Organization => Organization)(implicit session: this.type#Session): Organization = {
+    def updateOrganization(id: UUID, f: Organization => Organization)(implicit session: Session): Organization = {
       val old = getOrganization(id).getOrElse(throw IDEntityNotFound(s"organization with id:$id is not found"))
       val newOrg = f(old)
       if (newOrg.organizationRef != old.organizationRef) {
@@ -119,31 +117,31 @@ trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent
       newOrg
     }
 
-    def getOrganizationRef(id: UUID)(implicit session: this.type#Session): Option[OrganizationRef] = managementDao.getOrganizationRef(id)
+    def getOrganizationRef(id: UUID)(implicit session: Session): Option[OrganizationRef] = managementDao.getOrganizationRef(id)
 
-    def getOrganization(id: UUID)(implicit session: this.type#Session): Option[Organization] = managementDao.getOrganization(id)
+    def getOrganization(id: UUID)(implicit session: Session): Option[Organization] = managementDao.getOrganization(id)
 
-    def getOrganizationByName(name: String)(implicit session: this.type#Session): Option[OrganizationRef] = managementDao.getOrganizationRefByName(name)
+    def getOrganizationByName(name: String)(implicit session: Session): Option[OrganizationRef] = managementDao.getOrganizationRefByName(name)
 
-    def addAdminToOrganization(adminID: UUID, orgID: UUID)(implicit session: this.type#Session) = managementDao.associateAdmin(orgID, adminID)
+    def addAdminToOrganization(adminID: UUID, orgID: UUID)(implicit session: Session) = managementDao.associateAdmin(orgID, adminID)
 
-    def getAdminUserRef(id: UUID)(implicit session: this.type#Session): Option[AdminUserRef] = managementDao.getAdminUserRef(id)
+    def getAdminUserRef(id: UUID)(implicit session: Session): Option[AdminUserRef] = managementDao.getAdminUserRef(id)
 
-    def getAdminUserRefByEmail(email: String)(implicit session: this.type#Session): Option[AdminUserRef] = managementDao.getAdminUserRefByEmail(email)
+    def getAdminUserRefByEmail(email: String)(implicit session: Session): Option[AdminUserRef] = managementDao.getAdminUserRefByEmail(email)
 
-    def getAdminUserRefByUsername(username: String)(implicit session: this.type#Session): Option[AdminUserRef] = managementDao.getAdminUserRefByUsername(username)
+    def getAdminUserRefByUsername(username: String)(implicit session: Session): Option[AdminUserRef] = managementDao.getAdminUserRefByUsername(username)
 
-    def saveAdminUser(user: AdminUserRef)(implicit session: this.type#Session): AdminUserRef = managementDao.saveAdminUserRef(user)
+    def saveAdminUser(user: AdminUserRef)(implicit session: Session): AdminUserRef = managementDao.saveAdminUserRef(user)
 
-    def updateAdminUser(adminUser: AdminUserRef)(implicit session: this.type#Session): AdminUserRef = managementDao.updateAdminUserRef(adminUser)
+    def updateAdminUser(adminUser: AdminUserRef)(implicit session: Session): AdminUserRef = managementDao.updateAdminUserRef(adminUser)
 
-    def getDeviceRef(id: UUID)(implicit session: this.type#Session): Option[DeviceRef] = managementDao.getDeviceRef(id)
+    def getDeviceRef(id: UUID)(implicit session: Session): Option[DeviceRef] = managementDao.getDeviceRef(id)
 
-    def saveDeviceRef(device: DeviceRef)(implicit session: this.type#Session): DeviceRef = managementDao.saveDeviceRef(device)
+    def saveDeviceRef(device: DeviceRef)(implicit session: Session): DeviceRef = managementDao.saveDeviceRef(device)
 
-    def updateDeviceRef(device: DeviceRef)(implicit session: this.type#Session): DeviceRef = managementDao.updateDeviceRef(device)
+    def updateDeviceRef(device: DeviceRef)(implicit session: Session): DeviceRef = managementDao.updateDeviceRef(device)
 
-    def updateDevice(id: UUID, f: Device => Device)(implicit session: this.type#Session): Device = {
+    def updateDevice(id: UUID, f: Device => Device)(implicit session: Session): Device = {
       val oldDevice = managementDao.getDevice(id).getOrElse(throw IDEntityNotFound(s"device with id $id is not found"))
       val newDevice = f(oldDevice)
       if (oldDevice.deviceRef != newDevice.deviceRef) {
@@ -161,21 +159,21 @@ trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent
       newDevice
     }
 
-    def saveDevice(device: Device)(implicit session: this.type#Session): Device = {
+    def saveDevice(device: Device)(implicit session: Session): Device = {
       managementDao.saveDeviceRef(device.deviceRef)
       device.permissions.foreach(permission => managementDao.saveACL(device.id, permission))
       device
     }
 
-    def getAdminUserByUsername(username: String)(implicit session: this.type#Session): Option[AdminUser] = managementDao.getAdminUserByUsername(username)
+    def getAdminUserByUsername(username: String)(implicit session: Session): Option[AdminUser] = managementDao.getAdminUserByUsername(username)
 
-    def getAdminUserByEmail(email: String)(implicit session: this.type#Session): Option[AdminUser] = managementDao.getAdminUserByEmail(email)
+    def getAdminUserByEmail(email: String)(implicit session: Session): Option[AdminUser] = managementDao.getAdminUserByEmail(email)
 
-    def getAdminUser(id: UUID)(implicit session: this.type#Session): Option[AdminUser] = managementDao.getAdminUser(id)
+    def getAdminUser(id: UUID)(implicit session: Session): Option[AdminUser] = managementDao.getAdminUser(id)
 
-    def getDevice(id: UUID)(implicit session: this.type#Session): Option[Device] = managementDao.getDevice(id)
+    def getDevice(id: UUID)(implicit session: Session): Option[Device] = managementDao.getDevice(id)
 
-    def getDomain(id: UUID)(implicit session: this.type#Session): Option[Domain] = managementDao.getDomain(id, registry)
+    def getDomain(id: UUID)(implicit session: Session): Option[Domain] = managementDao.getDomain(id, registry)
   }
 
 }
@@ -183,31 +181,28 @@ trait OrganizationRepositoryDaoComponent extends OrganizationRepositoryComponent
 trait UserRepositoryDaoComponent extends UserRepositoryComponent {
   this: ManagementDaoComponent =>
   val userRepository: UserRepository = new UserRepository {
-    type Session = managementDao.Session
 
-    def getUserRefByEmail(email: String)(implicit session: this.type#Session): Option[UserRef] = managementDao.getUserRefByEmail(email)
+    def getUserRefByEmail(email: String)(implicit session: Session): Option[UserRef] = managementDao.getUserRefByEmail(email)
 
-    def getUserRefByUsername(username: String)(implicit session: this.type#Session): Option[UserRef] = managementDao.getUserRefByUsername(username)
+    def getUserRefByUsername(username: String)(implicit session: Session): Option[UserRef] = managementDao.getUserRefByUsername(username)
 
-    def getUserRef(id: UUID)(implicit session: this.type#Session): Option[UserRef] = managementDao.getUserRef(id)
+    def getUserRef(id: UUID)(implicit session: Session): Option[UserRef] = managementDao.getUserRef(id)
 
-    def saveUserRef(user: UserRef)(implicit session: this.type#Session): UserRef = managementDao.saveUserRef(user)
+    def saveUserRef(user: UserRef)(implicit session: Session): UserRef = managementDao.saveUserRef(user)
 
-    def updateUserRef(user: UserRef)(implicit session: this.type#Session): UserRef = managementDao.updateUserRef(user)
+    def updateUserRef(user: UserRef)(implicit session: Session): UserRef = managementDao.updateUserRef(user)
 
-    def getUser(id: UUID)(implicit session: this.type#Session): Option[User] = managementDao.getUser(id)
+    def getUser(id: UUID)(implicit session: Session): Option[User] = managementDao.getUser(id)
 
-    def getUserByUsername(username: String)(implicit session: this.type#Session): Option[User] = managementDao.getUserByUsername(username)
+    def getUserByUsername(username: String)(implicit session: Session): Option[User] = managementDao.getUserByUsername(username)
 
-    def getUserByEmail(email: String)(implicit session: this.type#Session): Option[User] = managementDao.getUserByEmail(email)
+    def getUserByEmail(email: String)(implicit session: Session): Option[User] = managementDao.getUserByEmail(email)
   }
 
   trait ACLServiceComponentDao extends ACLServiceComponent {
     this: ManagementDaoComponent =>
     val aclService = new ACLService {
-      type Session = managementDao.Session
-
-      def truncateServicePermissions(clientID: UUID, serviceName: String)(implicit session: this.type#Session): Unit = managementDao.dropServiceACLS(clientID, serviceName)
+      def truncateServicePermissions(clientID: UUID, serviceName: String)(implicit session: Session): Unit = managementDao.dropServiceACLS(clientID, serviceName)
     }
   }
 

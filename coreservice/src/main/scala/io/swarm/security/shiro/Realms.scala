@@ -32,6 +32,7 @@ import scala.collection.JavaConverters.asJavaCollectionConverter
 import io.swarm.management.Management._
 import io.swarm.management.Management.Organization
 import scala.Some
+import io.swarm.infrastructure.persistence.slick.SlickDbProvider
 
 /**
  * Created by Anil Chalil on 11/14/13.
@@ -91,25 +92,24 @@ trait ClientIDSecretRealmBaseComponent {
 
 }
 
-trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretRealmBaseComponent with BearerRealmBaseComponent with SessionProvider {
+trait ClientIDSecretBearerRealmBaseComponent extends ClientIDSecretRealmBaseComponent with BearerRealmBaseComponent with SlickDbProvider {
   this: TokenRepositoryComponent with OrganizationRepositoryComponent =>
-
   trait ClientIDSecretBearerRealmBase extends AuthorizingRealm with BearerRealmBase with ClientIDSecretRealmBase {
 
     override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
 
       case bearerToken: OauthBearerToken =>
         bearerToken.authPrincipalType match {
-          case AuthPrincipalType.Device => authorizeBearer(future(withSession(implicit s => organizationRepository.getDevice(bearerToken.principalID))), bearerToken)
-          case AuthPrincipalType.Domain => authorizeBearer(future(withSession(implicit s => organizationRepository.getDomain(bearerToken.principalID))), bearerToken)
-          case AuthPrincipalType.Organization => authorizeBearer(future(withSession(implicit s => organizationRepository.getOrganization(bearerToken.principalID))), bearerToken)
+          case AuthPrincipalType.Device => authorizeBearer(future(db.withSession(implicit s => organizationRepository.getDevice(bearerToken.principalID))), bearerToken)
+          case AuthPrincipalType.Domain => authorizeBearer(future(db.withSession(implicit s => organizationRepository.getDomain(bearerToken.principalID))), bearerToken)
+          case AuthPrincipalType.Organization => authorizeBearer(future(db.withSession(implicit s => organizationRepository.getOrganization(bearerToken.principalID))), bearerToken)
         }
 
       case clientIDSecret: ClientIDSecretToken =>
         clientIDSecret.authPrincipalType match {
-          case AuthPrincipalType.Device => authorizeClientIDSecret(future(withSession(implicit s => organizationRepository.getDevice(clientIDSecret.principalID))), clientIDSecret)
-          case AuthPrincipalType.Domain => authorizeClientIDSecret(future(withSession(implicit s => organizationRepository.getDomain(clientIDSecret.principalID))), clientIDSecret)
-          case AuthPrincipalType.Organization => authorizeClientIDSecret(future(withSession(implicit s => organizationRepository.getOrganization(clientIDSecret.principalID))), clientIDSecret)
+          case AuthPrincipalType.Device => authorizeClientIDSecret(future(db.withSession(implicit s => organizationRepository.getDevice(clientIDSecret.principalID))), clientIDSecret)
+          case AuthPrincipalType.Domain => authorizeClientIDSecret(future(db.withSession(implicit s => organizationRepository.getDomain(clientIDSecret.principalID))), clientIDSecret)
+          case AuthPrincipalType.Organization => authorizeClientIDSecret(future(db.withSession(implicit s => organizationRepository.getOrganization(clientIDSecret.principalID))), clientIDSecret)
         }
     }
   }
@@ -168,9 +168,8 @@ trait DomainRealmComponent extends ClientIDSecretBearerRealmBaseComponent {
 
 }
 
-trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerRealmBaseComponent with SessionProvider {
+trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerRealmBaseComponent with SlickDbProvider{
   this: TokenRepositoryComponent with OrganizationRepositoryComponent =>
-
   object DeviceRealm extends AuthorizingRealm with BearerRealmBase with ClientIDSecretRealmBase {
     //initialization block
     {
@@ -193,19 +192,20 @@ trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerR
 
       case bearerToken: OauthBearerToken =>
         bearerToken.authPrincipalType match {
-          case AuthPrincipalType.Device => authorizeBearer(future(withSession(implicit s => organizationRepository.getDevice(bearerToken.principalID))), bearerToken, checkClient)
+          case AuthPrincipalType.Device => authorizeBearer(future(db.withSession(implicit s => organizationRepository.getDevice(bearerToken.principalID))), bearerToken, checkClient)
         }
 
       case clientIDSecret: ClientIDSecretToken =>
         clientIDSecret.authPrincipalType match {
-          case AuthPrincipalType.Device => authorizeClientIDSecret(future(withSession(implicit s => organizationRepository.getDevice(bearerToken.principalID))), clientIDSecret, checkClient)
+          case AuthPrincipalType.Device => authorizeClientIDSecret(future(db.withSession(implicit s => organizationRepository.getDevice(clientIDSecret.principalID))), clientIDSecret, checkClient)
         }
     }
 
     override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
       val info = new SimpleAuthorizationInfo()
       val device = principals.byType(classOf[Device]).asScala.head
-      info.addObjectPermissions(Permissions(device.permissions).asJavaCollection)
+      //TODO implement acls
+      //info.addObjectPermissions(Permissions(device.permissions).asJavaCollection)
       info.addRoles(List(Roles.Device).asJavaCollection)
       info
     }
@@ -213,16 +213,15 @@ trait DeviceRealmComponent extends ClientIDSecretRealmBaseComponent with BearerR
 
 }
 
-trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent with SessionProvider {
-  this: TokenRepositoryComponent with UserRepositoryComponent with OrganizationRepositoryComponent =>
-
+trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent with SlickDbProvider {
+  this: TokenRepositoryComponent  with OrganizationRepositoryComponent with UserRepositoryComponent=>
   trait UserInfoRealmBase extends AuthorizingRealm with BearerRealmBase {
 
     def getPrincipalByEmail(principal: String): Option[UserInfo]
 
     def getPrincipalByUsername(principal: String): Option[UserInfo]
 
-    private def isEmail(value: String) = value.split("@").length == 2
+    protected def isEmail(value: String) = value.split("@").length == 2
 
     def checkClient(client: UserInfo) {
       if (!client.activated)
@@ -234,8 +233,8 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent with SessionPr
     override def doGetAuthenticationInfo(token: AuthenticationToken) = token match {
       case bearerToken: OauthBearerToken =>
         bearerToken.authPrincipalType match {
-          case AuthPrincipalType.Admin => authorizeBearer(future(withSession(implicit s => organizationRepository.getAdminUser(bearerToken.principalID))), bearerToken, checkClient)
-          case AuthPrincipalType.User => authorizeBearer(future(withSession(implicit s => userRepository.getUser(bearerToken.principalID))), bearerToken, checkClient)
+          case AuthPrincipalType.Admin => authorizeBearer(future(db.withSession(implicit s => organizationRepository.getAdminUser(bearerToken.principalID))), bearerToken, checkClient)
+          case AuthPrincipalType.User => authorizeBearer(future(db.withSession(implicit s => userRepository.getUser(bearerToken.principalID))), bearerToken, checkClient)
         }
 
       case usernamePasswordToken: UsernamePasswordToken =>
@@ -246,12 +245,13 @@ trait UserInfoRealmBaseComponent extends BearerRealmBaseComponent with SessionPr
             new SimpleAuthenticationInfo(userInfo, userInfo.credential, Config.userInfoHash, getName)
         }.getOrElse(throw new UnknownAccountException(s"userinfo not found for ${usernamePasswordToken.getPrincipal}"))
     }
+
   }
 
 }
 
-trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
-  this: TokenRepositoryComponent with UserRepositoryComponent with OrganizationRepositoryComponent =>
+trait AdminUserRealmComponent extends UserInfoRealmBaseComponent with SlickDbProvider{
+  this: TokenRepositoryComponent with OrganizationRepositoryComponent with UserRepositoryComponent=>
 
   object AdminUserRealm extends UserInfoRealmBase {
     //initialization block
@@ -265,15 +265,16 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
       case _ => false
     }
 
-    def getPrincipalByEmail(email: String): Option[UserInfo] = withSession(implicit s => organizationRepository.getAdminUserByEmail(email))
+    def getPrincipalByEmail(email: String): Option[UserInfo] = db.withSession(implicit s => organizationRepository.getAdminUserByEmail(email))
 
-    def getPrincipalByUsername(username: String): Option[UserInfo] = withSession(implicit s => organizationRepository.getAdminUserByUsername(username))
+    def getPrincipalByUsername(username: String): Option[UserInfo] = db.withSession(implicit s => organizationRepository.getAdminUserByUsername(username))
 
     override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
       val info = new SimpleAuthorizationInfo()
       val user = principals.byType(classOf[AdminUser]).asScala.head
       info.addObjectPermission(Permissions(user.organizations))
-      info.addObjectPermission(Permissions.forDomains(user.organizations.flatMap(_.databases)))
+      val domains=db.withSession(implicit s=> user.organizations.map(o=>organizationRepository.getOrganization(o.id)).flatten.map(_.domains).flatten)
+      info.addObjectPermission(Permissions.forDomains(domains))
       info.addRoles(List(Roles.AdminUser, Roles.DomainAdmin, Roles.OrganizationAdmin).asJavaCollection)
       info
     }
@@ -282,8 +283,7 @@ trait AdminUserRealmComponent extends UserInfoRealmBaseComponent {
 }
 
 trait UserRealmComponent extends UserInfoRealmBaseComponent {
-  this: TokenRepositoryComponent with UserRepositoryComponent with OrganizationRepositoryComponent =>
-
+  this: TokenRepositoryComponent with OrganizationRepositoryComponent with UserRepositoryComponent =>
   object UserRealm extends UserInfoRealmBase {
     //initialization block
     {
@@ -296,14 +296,15 @@ trait UserRealmComponent extends UserInfoRealmBaseComponent {
       case _ => false
     }
 
-    def getPrincipalByEmail(email: String): Option[UserInfo] = withSession(implicit s => userRepository.getUserByEmail(email))
+    def getPrincipalByEmail(email: String): Option[UserInfo] = db.withSession(implicit s => userRepository.getUserByEmail(email))
 
-    def getPrincipalByUsername(username: String): Option[UserInfo] = withSession(implicit s => userRepository.getUserByUsername(username))
+    def getPrincipalByUsername(username: String): Option[UserInfo] = db.withSession(implicit s => userRepository.getUserByUsername(username))
 
     override def doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo = {
       val info = new SimpleAuthorizationInfo()
       val user = principals.byType(classOf[User]).asScala.head
-      info.addObjectPermissions(Permissions(user.permissions).asJavaCollection)
+      //TODO implement acls
+      //info.addObjectPermissions(Permissions(user.permissions).asJavaCollection)
       info.addRoles(List(Roles.User).asJavaCollection)
       info
     }

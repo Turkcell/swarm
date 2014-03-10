@@ -15,21 +15,9 @@ import scala.Some
 import io.swarm.management.impl.ManagementDaoJDBC
 import java.util.UUID
 import io.swarm.management.dao.ManagementDaoComponent
-import scala.slick.jdbc.JdbcBackend
 
-/**
- * Created by capacman on 10/26/13.
- */
 
-trait SlickSessionProvider extends SessionProvider {
-  type Session = JdbcBackend.Session
-
-  val db: Database
-
-  def withSession[T](f: (SlickSessionProvider#Session) => T): T = db.withSession(f)
-}
-
-trait HSQLInMemoryManagementDaoComponent extends ManagementDaoComponent with SlickSessionProvider {
+trait HSQLInMemoryManagementDaoComponent extends ManagementDaoComponent {
   val profile: JdbcProfile = HsqldbDriver
   val managementDao = new ManagementDaoJDBC(profile)
   lazy val db = Database.forURL("jdbc:hsqldb:mem:mymemdb", driver = "org.hsqldb.jdbc.JDBCDriver", user = "sa", password = "sa")
@@ -49,7 +37,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   }
 
   override def beforeAll(configMap: ConfigMap) {
-    withSession {
+    db.withSession {
       implicit session =>
         managementDao.create
         organizations.foreach(managementDao.saveOrganizationRef)
@@ -64,7 +52,7 @@ class SchemaTest extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConf
   }
 
   override def afterAll(configMap: ConfigMap) {
-    withSession {
+    db.withSession {
       session =>
         managementDao.drop(session)
     }

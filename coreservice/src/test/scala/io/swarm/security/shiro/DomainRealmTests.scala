@@ -24,41 +24,39 @@ import io.swarm.UUIDGenerator
 import io.swarm.security._
 import scala.collection.JavaConverters._
 import com.github.nscala_time.time.Imports._
-import io.swarm.domain
-import io.swarm.domain.DatabaseMetadata
-import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
-import io.swarm.management.impl.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
+import io.swarm.management.Management.{DomainRef, ServiceProviderRegistryComponent}
+import io.swarm.management.dao.OrganizationRepositoryDaoComponent
 
 
-class DomainRealmTests extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with DomainRealmComponent with InMemoryComponents with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryManagementResourceDaoComponent with SlickPersistenceSessionComponent {
+class DomainRealmTests extends FlatSpec with ShouldMatchers with BeforeAndAfterAllConfigMap with DomainRealmComponent with InMemoryComponents with OrganizationRepositoryDaoComponent with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryManagementDaoComponent with ServiceProviderRegistryComponent {
   val realm = DatabaseRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
 
-  val databaseNonExist = domain.Database(UUIDGenerator.randomGenerator.generate(), "nonExist", DatabaseMetadata(3600 * 1000 * 24), 0)
+  val domainNonExist = DomainRef(UUIDGenerator.randomGenerator.generate(), "nonExist")
   val secret = ClientSecret(AuthPrincipalType.Domain)
   var validToken: OauthBearerToken = null
   var expiredToken: OauthBearerToken = null
-  db.withDynSession {
-    clientResourceDao.create
-    clientRepository.saveAdminUser(TestData.user)
-    resourceRepository.saveOrganization(TestData.org)
-    TestData.org.databases.foreach(resourceRepository.saveDatabase(_, TestData.org.id))
+  db.withSession {
+    implicit s =>
+      managementDao.create
+      organizationRepository.saveAdminUser(TestData.admin)
+      organizationRepository.saveOrganization(TestData.org)
 
-    tokenRepository.saveClientSecret(ClientID(TestData.database), secret)
-    validToken = {
-      val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Domain, TestData.database.id), 0.toDuration, 0)
-      tokenRepository.putTokenInfo(tokenInfo)
-      OauthBearerToken(tokenInfo)
-    }
-    expiredToken = {
-      val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Domain, TestData.database.id), 100.toDuration, 0)
-      tokenRepository.putTokenInfo(tokenInfo)
-      OauthBearerToken(tokenInfo)
-    }
+      tokenRepository.saveClientSecret(ClientID(TestData.domain), secret)
+      validToken = {
+        val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Domain, TestData.domain.id), 0.toDuration, 0)
+        tokenRepository.putTokenInfo(tokenInfo)
+        OauthBearerToken(tokenInfo)
+      }
+      expiredToken = {
+        val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Domain, TestData.domain.id), 100.toDuration, 0)
+        tokenRepository.putTokenInfo(tokenInfo)
+        OauthBearerToken(tokenInfo)
+      }
   }
 
-  "Database" should behave like basic(ClientIDSecretToken(ClientID(TestData.database), secret), ClientIDSecretToken(ClientID(TestData.database), ClientSecret(AuthPrincipalType.Domain)), ClientIDSecretToken(ClientID(databaseNonExist), ClientSecret(AuthPrincipalType.Domain)), validToken, expiredToken)
+  "Database" should behave like basic(ClientIDSecretToken(ClientID(TestData.domain), secret), ClientIDSecretToken(ClientID(TestData.domain), ClientSecret(AuthPrincipalType.Domain)), ClientIDSecretToken(ClientID(domainNonExist), ClientSecret(AuthPrincipalType.Domain)), validToken, expiredToken)
 }

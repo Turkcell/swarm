@@ -150,7 +150,7 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
     def withPermissions = q leftJoin clientPermissions on (_.id is _.clientID)
   }
 
-  class Users(tag: Tag) extends Table[Management.UserRef](tag, "DATABASE_USERS") with UserTable {
+  class Users(tag: Tag) extends Table[Management.UserRef](tag, "SERVICE_USERS") with UserTable {
 
     def * = (id, name, surname, username, email, credential, activated, confirmed, disabled) <>(Management.UserRef.tupled, Management.UserRef.unapply)
 
@@ -424,11 +424,11 @@ class ManagementDaoJDBC(val profile: JdbcProfile) extends ManagementDao {
   }
 
   def create(implicit session: Session) {
-    (organizations.ddl ++ domains.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).create
+    (organizations.ddl ++ domains.ddl ++ serviceTenants.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).create
   }
 
   def drop(implicit session: Session) {
-    (organizations.ddl ++ domains.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).drop
+    (organizations.ddl ++ domains.ddl ++ serviceTenants.ddl ++ adminUsers.ddl ++ organizationAdmins.ddl ++ users.ddl ++ devices.ddl ++ clientPermissions.ddl).drop
   }
 
 

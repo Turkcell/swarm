@@ -22,26 +22,22 @@ import org.apache.shiro.realm.Realm
 import org.apache.shiro.SecurityUtils
 import io.swarm.UUIDGenerator
 import io.swarm.security._
-import io.swarm.domain.Organization
 import scala.collection.JavaConverters._
 import com.github.nscala_time.time.Imports._
-import io.swarm.infrastructure.persistence.slick.SlickPersistenceSessionComponent
-import io.swarm.management.impl.{ManagementRepositoryComponentJDBC, ClientRepositoryComponentSlick}
+import io.swarm.management.dao.OrganizationRepositoryDaoComponent
+import io.swarm.management.Management.{ServiceProviderRegistryComponent, Organization}
 
 /**
  * Created by Anil Chalil on 11/19/13.
  */
-class OrganizationRealmTests extends FlatSpec with ShouldMatchers with OrganizationRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryManagementResourceDaoComponent with ClientRepositoryComponentSlick with ManagementRepositoryComponentJDBC with SlickPersistenceSessionComponent {
+class OrganizationRealmTests extends FlatSpec with ShouldMatchers with OrganizationRealmComponent with InMemoryComponents with RealmTestsBase with BasicRealmBehaviors with HSQLInMemoryManagementDaoComponent with OrganizationRepositoryDaoComponent with ServiceProviderRegistryComponent {
   val realm = OrganizationRealm
   val sec = new DefaultSecurityManager()
   sec.setAuthenticator(new ExclusiveRealmAuthenticator)
   sec.setRealms(List(realm.asInstanceOf[Realm]).asJava)
   SecurityUtils.setSecurityManager(sec)
-  clientRepository.saveAdminUser(TestData.user)
-  val orgNonExistent = Organization(UUIDGenerator.randomGenerator.generate(), "testorgnonexist", Set(), 0)
-  resourceRepository.saveOrganization(TestData.org)
   val secret = ClientSecret(AuthPrincipalType.Organization)
-  tokenRepository.saveClientSecret(ClientID(TestData.org), secret)
+  val orgNonExistent = Organization(UUIDGenerator.randomGenerator.generate(), "testorgNonExist", false, Set(), Set())
   val validToken = {
     val tokenInfo = TokenInfo(TokenCategory.Access, TokenType.Access, AuthPrincipalInfo(AuthPrincipalType.Organization, TestData.org.id), 0.toDuration, 0)
     tokenRepository.putTokenInfo(tokenInfo)
@@ -52,5 +48,14 @@ class OrganizationRealmTests extends FlatSpec with ShouldMatchers with Organizat
     tokenRepository.putTokenInfo(tokenInfo)
     OauthBearerToken(tokenInfo)
   }
-  "Organization" should behave like basic(ClientIDSecretToken(ClientID(TestData.org), secret), ClientIDSecretToken(ClientID(TestData.org), ClientSecret(AuthPrincipalType.Organization)), ClientIDSecretToken(ClientID(orgNonExistent), ClientSecret(AuthPrincipalType.Organization)), validToken, expiredToken)
+  db.withSession {
+    implicit s =>
+      managementDao.create
+      organizationRepository.saveAdminUser(TestData.admin)
+      organizationRepository.saveOrganization(TestData.org)
+      tokenRepository.saveClientSecret(ClientID(TestData.org.organizationRef), secret)
+
+  }
+
+  "Organization" should behave like basic(ClientIDSecretToken(ClientID(TestData.org.organizationRef), secret), ClientIDSecretToken(ClientID(TestData.org.organizationRef), ClientSecret(AuthPrincipalType.Organization)), ClientIDSecretToken(ClientID(orgNonExistent.organizationRef), ClientSecret(AuthPrincipalType.Organization)), validToken, expiredToken)
 }

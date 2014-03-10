@@ -2,8 +2,7 @@ package io.swarm.management
 
 import java.util.UUID
 import io.swarm.domain._
-import java.util.concurrent.ConcurrentHashMap
-import io.swarm.management.dao.ManagementDaoComponent
+import scala.slick.jdbc.JdbcBackend.Session
 
 /**
  * Created by Anil Chalil on 12/18/13.
@@ -68,15 +67,7 @@ object Management {
     def drop(uuid: UUID)
   }
 
-  trait SessionProvider {
-    type Session
-
-    def withSession[T](f: (Session => T)): T
-  }
-
   trait ACLService {
-    type Session
-
     def truncateServicePermissions(clientID: UUID, serviceName: String)(implicit session: Session)
   }
 
@@ -115,7 +106,6 @@ object Management {
   }
 
   trait OrganizationRepository {
-    type Session
 
     def saveOrganization(org: Organization)(implicit session: Session): Organization
 
@@ -165,7 +155,6 @@ object Management {
   }
 
   trait UserRepository {
-    type Session
 
     def getUserRefByEmail(email: String)(implicit session: Session): Option[UserRef]
 

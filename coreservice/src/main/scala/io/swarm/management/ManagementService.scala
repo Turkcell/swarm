@@ -17,53 +17,31 @@
 package io.swarm.management
 
 import io.swarm.domain._
-import io.swarm.domain.DatabaseInfo
 import java.util.UUID
-import scala.concurrent._
-import ExecutionContext.Implicits.global
-import io.swarm.security.{HashedAlgorithm, AnonymousAuthorizer, TokenRepositoryComponent}
-import io.swarm.{Config, UUIDGenerator}
-import io.swarm.infrastructure.persistence.PersistenceSessionComponent
+import io.swarm.security.TokenRepositoryComponent
+import io.swarm.management.Management.{OrganizationRef, DomainRef, Domain}
 
 /**
  * Created by Anil Chalil on 11/1/13.
  */
 trait ManagementServiceComponent {
-  this: TokenRepositoryComponent with ManagementRepositoryComponent with ClientRepositoryComponent with PersistenceSessionComponent with AnonymousAuthorizer =>
+  this: TokenRepositoryComponent =>
   val managementService: ManagementService
 
   trait ManagementService {
     private def isValidEmail(email: String): Boolean =
       """(\w+)@([\w\.]+)""".r.unapplySeq(email).isDefined
 
-    def createSandBoxDB(): Database = {
-      Database(UUIDGenerator.randomGenerator.generate(), "sandbox", DatabaseMetadata(Config.defaultDBOauthTTL), 0)
-    }
+    def createSandBoxDomain(): Domain
 
-    def createOrganizationWithAdmin(organizationName: String, name: Option[String], surname: Option[String], username: String, email: String, password: String): (OrganizationRef, UserInfo) = isAnonymous {
-      require(username != null && !username.isEmpty, "username could not be empty or null")
-      require(email != null && isValidEmail(email), "email should be correct!")
-      persistenceSession withTransaction {
-        val org = if (Config.enableSandBoxDB)
-          resourceRepository.saveOrganization(OrganizationRef(UUIDGenerator.randomGenerator.generate(), organizationName, Set(createSandBoxDB()), 0))
-        else
-          resourceRepository.saveOrganization(OrganizationRef(UUIDGenerator.randomGenerator.generate(), organizationName, Set(), 0))
-        val admin = AdminUser(UUIDGenerator.randomGenerator.generate(), name, surname, username, email, HashedAlgorithm.toHex(password), activated = !Config.adminUsersRequireActivation, confirmed = !Config.adminUsersRequireConfirmation, disabled = false, Set(org), 0)
-        clientRepository.saveAdminUser(admin)
-        //TODO should trigger admin flow
-        resourceRepository.addAdminToOrganization(org.id, admin.id)
-        (org, admin)
-      }
-    }
+    def createOrganizationWithAdmin(organizationName: String, name: Option[String], surname: Option[String], username: String, email: String, password: String): (OrganizationRef, UserInfo)
 
-    def createDatabase(name: String, orgID: UUID): Database
+    def createDomain(name: String, orgID: UUID): Domain
 
 
-    def getDatabaseInfo(dbID: UUID): Option[DatabaseInfo] = resourceRepository.getDatabaseInfo(dbID)
+    def getDomainInfo(dbID: UUID): Option[DomainRef]
 
-    def getDatabaseInfoAsync(uuid: UUID) = future {
-      getDatabaseInfo(uuid)
-    }
+    def getDomainInfoAsync(uuid: UUID)
 
   }
 
